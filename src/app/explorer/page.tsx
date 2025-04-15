@@ -1,0 +1,428 @@
+// app/explorer/page.tsx
+"use client";
+
+import React, { useState, useEffect, useRef } from "react";
+import Image from "next/image";
+import Link from "next/link";
+
+export default function ExplorerPage() {
+  const [searchQuery, setSearchQuery] = useState("");
+  const [selectedService, setSelectedService] = useState("");
+  const [areaFilter, setAreaFilter] = useState("");
+  // Mock service categories
+  const serviceCategories = ["Service1", "Service2", "Service3", "Service4"];
+  const [selectedCategory, setSelectedCategory] = useState("");
+  const [showPopulaireDropdown, setShowPopulaireDropdown] = useState(false);
+  const [selectedPopulaire, setSelectedPopulaire] = useState("Populaire");
+  const dropdownRef = useRef<HTMLDivElement>(null);
+
+  // Add this effect to handle clicks outside of the dropdown
+  useEffect(() => {
+    function handleClickOutside(event: { target: any }) {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
+        setShowPopulaireDropdown(false);
+      }
+    }
+
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, []);
+  // Mock services data (in a real app, this would come from an API)
+  const services = Array.from({ length: 16 }, (_, i) => ({
+    id: i + 1,
+    title: `Service ${i + 1}`,
+    category: `Service#${Math.floor(i / 4) + 1}`,
+    imageUrl: "/placeholder-service.jpg",
+  }));
+
+  return (
+    <div className="max-w-[1800px] mx-auto  px-4 sm:px-6 lg:px-8 py-8">
+      {/* Hero section with Georgia font */}
+      <div className="hidden sm:block text-center mb-10">
+        <h1 className="text-[62px] font-medium font-georgia mb-0">
+          Découvrez les offres
+        </h1>
+        <h2 className="text-[62px] font-medium font-georgia mt-[-20px]">
+          des e-changeurs
+        </h2>
+        <p className="text-gray-900">
+          Explorez des centaines de services et d'offres autour de chez vous
+        </p>
+      </div>
+      {/* ======= DESKTOP SEARCH SECTION ======= */}
+      <div className="hidden sm:block mb-24 max-w-2xl mx-auto">
+        <div className="flex flex-wrap justify-between gap-2">
+          {/* Search input with services dropdown - left section */}
+          <div className="flex items-center bg-gray-100 rounded-full px-4 py-3 flex-grow">
+            <input
+              type="text"
+              placeholder="Que recherchez vous?"
+              className="w-full bg-transparent focus:outline-none text-gray-700 text-sm"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+            />
+
+            {/* Services dropdown - no border */}
+            <div className="relative flex items-center pl-2 ml-1">
+              <select
+                className="appearance-none bg-transparent text-gray-700 pr-6 focus:outline-none font-medium text-sm"
+                value={selectedService}
+                onChange={(e) => setSelectedService(e.target.value)}
+              >
+                <option value="">Services</option>
+                {serviceCategories.map((category) => (
+                  <option key={category} value={category}>
+                    {category}
+                  </option>
+                ))}
+              </select>
+              <div className="pointer-events-none absolute right-0 text-gray-700">
+                <svg
+                  className="h-3 w-3"
+                  fill="currentColor"
+                  viewBox="0 0 20 20"
+                >
+                  <path
+                    fillRule="evenodd"
+                    d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z"
+                    clipRule="evenodd"
+                  />
+                </svg>
+              </div>
+            </div>
+
+            {/* Search button - perfectly circular */}
+            <div className="flex items-center justify-center bg-[#38AC8E] rounded-full p-1.5 ml-2 text-white">
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                className="h-5 w-5"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
+                />
+              </svg>
+            </div>
+          </div>
+
+          {/* Location input - right section */}
+          <div className="flex items-center bg-gray-100 rounded-full px-4 py-3">
+            <input
+              type="text"
+              placeholder="Vichy"
+              className="bg-transparent focus:outline-none text-gray-700 w-18 text-sm"
+              value={areaFilter}
+              onChange={(e) => setAreaFilter(e.target.value)}
+            />
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              className="h-6 w-6 text-[#38AC8E] ml-2"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"
+              />
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"
+              />
+            </svg>
+          </div>
+        </div>
+      </div>
+      {/* ======= MOBILE SEARCH SECTION ======= */}
+      <div className="sm:hidden mb-3">
+        {/* Search bar with services dropdown - fixed design */}
+        <div className="flex items-center bg-gray-100 rounded-full px-3 py-2 mb-3">
+          <input
+            type="text"
+            placeholder="Que recherchez vous?"
+            className="min-w-0 w-full flex-shrink bg-transparent focus:outline-none text-gray-700 text-xs"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+          />
+
+          {/* Services dropdown - reduced width */}
+          <div className="relative flex items-center pl-1">
+            <select
+              className="appearance-none bg-transparent text-gray-700 pr-6 focus:outline-none text-xs font-medium w-20 flex-shrink-0"
+              value={selectedService}
+              onChange={(e) => setSelectedService(e.target.value)}
+            >
+              <option value="">Services</option>
+              {serviceCategories.map((category) => (
+                <option key={category} value={category}>
+                  {category}
+                </option>
+              ))}
+            </select>
+            <div className="pointer-events-none absolute right-0 text-gray-700">
+              <svg className="h-3 w-3" fill="currentColor" viewBox="0 0 20 20">
+                <path
+                  fillRule="evenodd"
+                  d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z"
+                  clipRule="evenodd"
+                />
+              </svg>
+            </div>
+          </div>
+
+          {/* Search button - inside the container */}
+          <button className="bg-[#38AC8E] rounded-full p-1 ml-1 text-white flex-shrink-0">
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              className="h-4 w-4"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
+              />
+            </svg>
+          </button>
+        </div>
+
+        {/* Location input - separate line in mobile */}
+        <div className="flex items-center bg-gray-100 rounded-full px-4 py-2">
+          <input
+            type="text"
+            placeholder="Vichy"
+            className="min-w-0 w-full bg-transparent focus:outline-none text-gray-700 text-xs"
+            value={areaFilter}
+            onChange={(e) => setAreaFilter(e.target.value)}
+          />
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            className="h-6 w-6 text-[#38AC8E] ml-1 flex-shrink-0"
+            fill="none"
+            viewBox="0 0 24 24"
+            stroke="currentColor"
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={2}
+              d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"
+            />
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={2}
+              d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"
+            />
+          </svg>
+        </div>
+      </div>
+      {/* ======= DESKTOP CATEGORY FILTERS ======= */}
+      <div className="hidden sm:flex justify-between mb-8 items-center">
+        <div className="flex">
+          <div className="relative inline-block mr-2" ref={dropdownRef}>
+            <button
+              onClick={() => setShowPopulaireDropdown(!showPopulaireDropdown)}
+              className="bg-white border border-gray-300 text-gray-800 px-4 py-2 rounded-xl text-sm font-medium flex items-center transition-colors duration-200 ease-in-out cursor-pointer hover:bg-gray-50"
+            >
+              {selectedPopulaire}
+              <svg
+                className={`h-4 w-4 ml-1 transition-transform duration-200 ${
+                  showPopulaireDropdown ? "transform rotate-180" : ""
+                }`}
+                fill="currentColor"
+                viewBox="0 0 20 20"
+              >
+                <path
+                  fillRule="evenodd"
+                  d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z"
+                  clipRule="evenodd"
+                />
+              </svg>
+            </button>
+
+            {showPopulaireDropdown && (
+              <div className="absolute mt-2 w-40 bg-white rounded-md shadow-lg py-1 z-10 transition-opacity duration-200 animate-fadeIn">
+                {["Populaire", "Récent", "Mieux noté", "Prix bas"].map(
+                  (option) => (
+                    <button
+                      key={option}
+                      className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 transition-colors duration-150 cursor-pointer"
+                      onClick={() => {
+                        setSelectedPopulaire(option);
+                        setShowPopulaireDropdown(false);
+                      }}
+                    >
+                      {option}
+                    </button>
+                  )
+                )}
+              </div>
+            )}
+          </div>
+        </div>
+
+        <div className="flex space-x-2">
+          {serviceCategories.map((category, index) => {
+            // Format category to include # before the number
+            const formattedCategory = category.replace(/(\d+)$/, "#$1");
+
+            return (
+              <button
+                key={category}
+                className={`text-gray-800 px-4 py-2 rounded-full text-sm font-medium transition-all duration-200 ease-in-out transform hover:scale-105 cursor-pointer ${
+                  selectedCategory === category
+                    ? "bg-gray-200 shadow-sm"
+                    : "bg-white hover:bg-gray-50"
+                }`}
+                onClick={() =>
+                  setSelectedCategory(
+                    category === selectedCategory ? "" : category
+                  )
+                }
+              >
+                {formattedCategory}
+              </button>
+            );
+          })}
+        </div>
+
+        <button className="flex items-center text-gray-700 px-4 py-2 rounded-xl border border-gray-300 transition-all duration-200 hover:bg-gray-50 hover:shadow-sm">
+          <span>Filtres</span>
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            className="h-4 w-4 ml-2"
+            fill="none"
+            viewBox="0 0 24 24"
+            stroke="currentColor"
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={2}
+              d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z"
+            />
+          </svg>
+        </button>
+      </div>
+      {/* ======= MOBILE FILTER SECTION ======= */}
+      <div className="sm:hidden flex justify-between mb-6">
+        {/* Populaire dropdown */}
+        <div className="relative">
+          <div className="relative inline-block mr-2" ref={dropdownRef}>
+            <button
+              onClick={() => setShowPopulaireDropdown(!showPopulaireDropdown)}
+              className="bg-white border border-gray-300 text-gray-800 px-4 py-2 rounded-md text-sm font-medium flex items-center transition-colors duration-200 ease-in-out cursor-pointer hover:bg-gray-50"
+            >
+              {selectedPopulaire}
+              <svg
+                className={`h-4 w-4 ml-1 transition-transform duration-200 ${
+                  showPopulaireDropdown ? "transform rotate-180" : ""
+                }`}
+                fill="currentColor"
+                viewBox="0 0 20 20"
+              >
+                <path
+                  fillRule="evenodd"
+                  d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z"
+                  clipRule="evenodd"
+                />
+              </svg>
+            </button>
+
+            {showPopulaireDropdown && (
+              <div className="absolute mt-2 w-40 bg-white rounded-md shadow-lg py-1 z-10 transition-opacity duration-200 animate-fadeIn">
+                {["Populaire", "Récent", "Mieux noté", "Prix bas"].map(
+                  (option) => (
+                    <button
+                      key={option}
+                      className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 transition-colors duration-150 cursor-pointer"
+                      onClick={() => {
+                        setSelectedPopulaire(option);
+                        setShowPopulaireDropdown(false);
+                      }}
+                    >
+                      {option}
+                    </button>
+                  )
+                )}
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Filtres button */}
+        <button className="flex items-center bg-white border border-gray-300 rounded-md px-4 py-2 text-sm">
+          <span>Filtres</span>
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            className="h-5 w-5 ml-2"
+            fill="none"
+            viewBox="0 0 24 24"
+            stroke="currentColor"
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={2}
+              d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z"
+            />
+          </svg>
+        </button>
+      </div>
+      {/* ======= DESKTOP SERVICES GRID ======= */}
+
+      <div className="hidden sm:grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-x-16 gap-y-2">
+        {services.map((service) => (
+          <Link
+            href={`/explorer/services/${service.id}`}
+            key={service.id}
+            className="flex flex-col"
+          >
+            {/* Card with rounded corners */}
+            <div className="w-full h-48 bg-[#38AC8E] rounded-lg mb-2 transition-transform hover:scale-105"></div>
+
+            {/* Service label with red dot */}
+            <div className="flex items-center mt-1">
+              <div className="w-6 h-6 bg-red-500 rounded-full mr-2"></div>
+              <span className="text-sm font-medium">{service.category}</span>
+            </div>
+          </Link>
+        ))}
+      </div>
+      {/* ======= MOBILE SERVICES GRID ======= */}
+      <div className="sm:hidden grid grid-cols-1 gap-6">
+        {services.map((service) => (
+          <Link
+            href={`/explorer/services/${service.id}`}
+            key={service.id}
+            className="flex flex-col"
+          >
+            {/* Card with rounded corners */}
+            <div className="w-full h-44 bg-[#38AC8E] rounded-lg mb-2"></div>
+
+            {/* Service label with red dot */}
+            <div className="flex items-center mt-1">
+              <div className="w-7 h-7 bg-red-500 rounded-full mr-2"></div>
+              <span className="text-sm font-medium">Service#1</span>
+            </div>
+          </Link>
+        ))}
+      </div>
+    </div>
+  );
+}
