@@ -86,7 +86,7 @@ const Navbar: React.FC<NavbarProps> = ({
                     alt="User profile"
                     width={40}
                     height={40}
-                    className="h-full w-full object-cover mr-2"
+                    className=" object-cover mr-2 w-5 h-5"
                   />
                   <span className="text-[#F4C300] font-medium">{points}</span>
                 </div>
@@ -97,7 +97,7 @@ const Navbar: React.FC<NavbarProps> = ({
                     alt="User profile"
                     width={40}
                     height={40}
-                    className="h-full w-full object-cover"
+                    className="w-5 h-5 object-cover"
                   />
                 </button>
                 {/* Notification bell */}
@@ -105,9 +105,9 @@ const Navbar: React.FC<NavbarProps> = ({
                   <Image
                     src="/bell.png"
                     alt="User profile"
-                    width={40}
-                    height={40}
-                    className="h-full w-full object-cover"
+                    width={24}
+                    height={24}
+                    className="w-4 h-5 "
                   />
                 </button>
 
@@ -118,7 +118,7 @@ const Navbar: React.FC<NavbarProps> = ({
                     alt="User profile"
                     width={40}
                     height={40}
-                    className="h-full w-full object-cover"
+                    className="w-5 h-5 object-cover"
                   />
                 </button>
 
