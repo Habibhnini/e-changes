@@ -4,15 +4,19 @@
 import React from "react";
 import Image from "next/image";
 import Link from "next/link";
+import { useParams } from "next/navigation";
+import { FaStar } from "react-icons/fa";
+import { IoWarningOutline, IoHeartOutline } from "react-icons/io5";
+import { PiShareFat } from "react-icons/pi";
 
-export default function ServiceDetailPage({
-  params,
-}: {
-  params: { id: string };
-}) {
+export default function ServiceDetailPage() {
+  // Use the useParams hook to get the id parameter
+  const params = useParams();
+  const id = params?.id as string;
+
   // Mock service data (in a real app, this would come from an API based on the ID)
   const service = {
-    id: params.id,
+    id: id,
     title: "Titre de l'annonce",
     category: "100 énergies",
     postedTime: "il y a 15 heures",
@@ -38,34 +42,39 @@ export default function ServiceDetailPage({
     const stars = [];
     for (let i = 1; i <= 5; i++) {
       stars.push(
-        <svg
+        <FaStar
           key={i}
           className={`w-4 h-4 ${
             i <= rating ? "text-yellow-400" : "text-gray-300"
           }`}
-          fill="currentColor"
-          viewBox="0 0 20 20"
-        >
-          <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118l-2.8-2.034c-.783-.57-.38-1.81.588-1.81h3.462a1 1 0 00.95-.69l1.07-3.292z" />
-        </svg>
+        />
       );
     }
     return stars;
   };
 
   return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
+    <div className="max-w-full mx-auto px-4 sm:px-6 lg:px-8 py-4">
       {/* Breadcrumb navigation */}
       <nav className="flex py-3 text-sm text-gray-600">
-        <Link href="/accueil" className="hover:text-gray-900">
+        <Link
+          href="/accueil"
+          className="hover:text-gray-900 transition-colors duration-200 ease-in-out cursor-pointer"
+        >
           Accueil
         </Link>
         <span className="mx-2">{">"}</span>
-        <Link href="/services" className="hover:text-gray-900">
+        <Link
+          href="/services"
+          className="hover:text-gray-900 transition-colors duration-200 ease-in-out cursor-pointer"
+        >
           Services
         </Link>
         <span className="mx-2">{">"}</span>
-        <Link href="/services/electricien" className="hover:text-gray-900">
+        <Link
+          href="/services/electricien"
+          className="hover:text-gray-900 transition-colors duration-200 ease-in-out cursor-pointer"
+        >
           Electricien
         </Link>
         <span className="mx-2">{">"}</span>
@@ -76,53 +85,14 @@ export default function ServiceDetailPage({
       <div className="hidden md:block">
         {/* Action buttons at the top right */}
         <div className="flex justify-end space-x-2 mb-4">
-          <button className="p-1">
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              className="h-6 w-6 text-gray-500"
-              fill="none"
-              viewBox="0 0 24 24"
-              stroke="currentColor"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"
-              />
-            </svg>
+          <button className="p-1 cursor-pointer hover:scale-110 transition-transform duration-200 ease-in-out">
+            <IoHeartOutline className="h-6 w-6 text-gray-500 hover:text-red-500 transition-colors duration-200" />
           </button>
-          <button className="p-1">
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              className="h-6 w-6 text-gray-500"
-              fill="none"
-              viewBox="0 0 24 24"
-              stroke="currentColor"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z"
-              />
-            </svg>
+          <button className="p-1 cursor-pointer hover:scale-110 transition-transform duration-200 ease-in-out">
+            <PiShareFat className="h-6 w-6 text-gray-500 hover:text-blue-500 transition-colors duration-200" />
           </button>
-          <button className="p-1">
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              className="h-6 w-6 text-gray-500"
-              fill="none"
-              viewBox="0 0 24 24"
-              stroke="currentColor"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"
-              />
-            </svg>
+          <button className="p-1 cursor-pointer hover:scale-110 transition-transform duration-200 ease-in-out">
+            <IoWarningOutline className="h-6 w-6 text-gray-500 hover:text-yellow-500 transition-colors duration-200" />
           </button>
         </div>
 
@@ -131,20 +101,20 @@ export default function ServiceDetailPage({
           {/* Main content grid */}
           <div className="flex flex-row gap-6">
             {/* Main image with thumbnails on the left */}
-            <div className="w-1/2 flex">
+            <div className="w-1/3 flex">
               {/* Thumbnails next to the image */}
               <div className="flex flex-col gap-2 mr-2">
                 {[...Array(3)].map((_, index) => (
                   <div
                     key={index}
-                    className="w-16 h-16 bg-teal-500 rounded-md"
+                    className="w-16 h-16 bg-[#38AC8E] rounded-md cursor-pointer hover:opacity-80 transition-opacity duration-200 hover:scale-105 ease-in-out"
                   ></div>
                 ))}
               </div>
 
               {/* Main image */}
               <div className="flex-1">
-                <div className="relative w-full h-full mx-auto ">
+                <div className="relative w-full h-full cursor-pointer hover:opacity-95 transition-opacity duration-200">
                   <Image
                     src="/service-placeholder.png"
                     alt="Service image"
@@ -159,7 +129,7 @@ export default function ServiceDetailPage({
             </div>
 
             {/* Service summary */}
-            <div className="w-1/2">
+            <div className="w-2/3">
               <div className="mb-4">
                 <h1 className="text-2xl font-medium">{service.title}</h1>
                 <h2 className="text-xl font-medium text-yellow-500">
@@ -172,23 +142,33 @@ export default function ServiceDetailPage({
 
               <div className="mb-6">
                 <h3 className="font-medium mb-2">Résumé</h3>
-                <div className="grid grid-cols-2 gap-y-2 text-sm">
-                  <div className="text-gray-600">Type de bien</div>
-                  <div>{service.details.type}</div>
-                  <div className="text-gray-600">Quantité</div>
-                  <div>{service.details.quantity}</div>
-                  <div className="text-gray-600">Matière du bien</div>
-                  <div>{service.details.material}</div>
-                  <div className="text-gray-600">Condition</div>
-                  <div>{service.details.condition}</div>
-                  <div className="text-gray-600">Localisation</div>
-                  <div>{service.details.location}</div>
-                </div>
+                <dl className="text-sm">
+                  <div className="flex mb-1">
+                    <dt className="text-gray-600 w-1/5">Type de bien</dt>
+                    <dd className="w-4/5">{service.details.type}</dd>
+                  </div>
+                  <div className="flex mb-1">
+                    <dt className="text-gray-600 w-1/5">Quantité</dt>
+                    <dd className="w-4/5">{service.details.quantity}</dd>
+                  </div>
+                  <div className="flex mb-1">
+                    <dt className="text-gray-600 w-1/5">Matière du bien</dt>
+                    <dd className="w-4/5">{service.details.material}</dd>
+                  </div>
+                  <div className="flex mb-1">
+                    <dt className="text-gray-600 w-1/5">Condition</dt>
+                    <dd className="w-4/5">{service.details.condition}</dd>
+                  </div>
+                  <div className="flex mb-1">
+                    <dt className="text-gray-600 w-1/5">Localisation</dt>
+                    <dd className="w-4/5">{service.details.location}</dd>
+                  </div>
+                </dl>
               </div>
 
               {/* User profile section with buttons on same line */}
               <div className="py-2 flex justify-between items-center">
-                <div className="flex items-center">
+                <div className="flex items-center cursor-pointer hover:opacity-90 transition-opacity duration-200">
                   <div className="w-10 h-10 rounded-full overflow-hidden bg-gray-300 mr-3">
                     <Image
                       src="/placeholder.png"
@@ -199,24 +179,26 @@ export default function ServiceDetailPage({
                     />
                   </div>
                   <div>
-                    <div className="font-medium">{service.user.name}</div>
                     <div className="flex items-center">
-                      <div className="flex mr-2">
+                      <div className="font-medium mr-2">
+                        {service.user.name}
+                      </div>
+                      <div className="flex">
                         {renderStars(service.user.rating)}
                       </div>
-                      <span className="text-xs text-gray-600">
-                        {service.user.announcements} annonces
-                      </span>
                     </div>
+                    <span className="text-xs text-gray-600">
+                      {service.user.announcements} annonces
+                    </span>
                   </div>
                 </div>
 
                 {/* Action buttons - moved to same line as user name */}
-                <div className="flex space-x-2">
-                  <button className="border border-teal-500 text-teal-500 py-1 px-3 rounded-full font-medium text-sm">
+                <div className="flex space-x-3">
+                  <button className="border border-[#38AC8E] text-[#38AC8E] py-2 px-4 rounded-full font-medium text-sm cursor-pointer hover:bg-[#38AC8E] hover:text-white transition-all duration-300 ease-in-out transform hover:scale-105 active:scale-95">
                     Voir le profil
                   </button>
-                  <button className="bg-teal-500 text-white py-1 px-3 rounded-full font-medium text-sm">
+                  <button className="bg-[#38AC8E] text-white py-2 px-4 rounded-full font-medium text-sm cursor-pointer hover:bg-[#2D8A70] transition-colors duration-300 ease-in-out transform hover:scale-105 active:scale-95">
                     Je suis intéressé
                   </button>
                 </div>
@@ -236,81 +218,39 @@ export default function ServiceDetailPage({
       <div className="block md:hidden">
         {/* Mobile action buttons */}
         <div className="flex justify-end space-x-3 mb-4">
-          <button className="p-2 rounded-full border border-gray-200">
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              className="h-5 w-5 text-gray-500"
-              fill="none"
-              viewBox="0 0 24 24"
-              stroke="currentColor"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"
-              />
-            </svg>
+          <button className="p-2 rounded-full  cursor-pointer transform hover:scale-110 active:scale-90 transition-transform duration-200 ease-in-out">
+            <IoHeartOutline className="h-5 w-5 text-gray-500 hover:text-red-500 transition-colors duration-200" />
           </button>
-          <button className="p-2 rounded-full border border-gray-200">
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              className="h-5 w-5 text-gray-500"
-              fill="none"
-              viewBox="0 0 24 24"
-              stroke="currentColor"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z"
-              />
-            </svg>
+          <button className="p-2 rounded-full cursor-pointer transform hover:scale-110 active:scale-90 transition-transform duration-200 ease-in-out">
+            <PiShareFat className="h-5 w-5 text-gray-500 hover:text-blue-500 transition-colors duration-200" />
           </button>
-          <button className="p-2 rounded-full border border-gray-200">
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              className="h-5 w-5 text-gray-500"
-              fill="none"
-              viewBox="0 0 24 24"
-              stroke="currentColor"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"
-              />
-            </svg>
+          <button className="p-2 rounded-full  cursor-pointer transform hover:scale-110 active:scale-90 transition-transform duration-200 ease-in-out">
+            <IoWarningOutline className="h-5 w-5 text-gray-500 hover:text-yellow-500 transition-colors duration-200" />
           </button>
         </div>
 
-        {/* Main image with thumbnails beside it */}
-        <div className="flex mb-4">
-          {/* Thumbnails beside the image */}
-          <div className="flex flex-col gap-2 mr-2">
-            {[...Array(3)].map((_, index) => (
-              <div
-                key={index}
-                className="w-10 h-10 bg-teal-500 rounded-md"
-              ></div>
-            ))}
-          </div>
-
-          {/* Main image */}
-          <div className="flex-1">
-            <div className="w-full h-48 bg-gray-200 rounded-lg overflow-hidden">
-              <div className="relative w-full h-full">
-                <Image
-                  src="/api/placeholder/400/300"
-                  alt="Service image"
-                  layout="fill"
-                  objectFit="cover"
-                />
-              </div>
+        {/* Main image */}
+        <div className="mb-4">
+          <div className="w-full h-48 bg-gray-200 rounded-lg overflow-hidden cursor-pointer">
+            <div className="relative w-full h-full hover:opacity-90 transition-opacity duration-200">
+              <Image
+                src="/service-placeholder.png"
+                alt="Service image"
+                layout="fill"
+                objectFit="cover"
+              />
             </div>
           </div>
+        </div>
+
+        {/* Thumbnails below the image */}
+        <div className="flex justify-start gap-2 mb-4">
+          {[...Array(3)].map((_, index) => (
+            <div
+              key={index}
+              className="w-10 h-10 bg-[#38AC8E] rounded-md cursor-pointer hover:opacity-80 transition-opacity duration-200 hover:scale-105 ease-in-out"
+            ></div>
+          ))}
         </div>
 
         {/* Title and category - moved right above resume */}
@@ -339,13 +279,13 @@ export default function ServiceDetailPage({
           </div>
         </div>
 
-        {/* Mobile user profile with buttons on same line */}
+        {/* Mobile user profile with buttons below user info */}
         <div className="border-t border-gray-200 pt-4 mb-6">
-          <div className="flex justify-between items-center">
-            <div className="flex items-center">
+          <div className="flex flex-col">
+            <div className="flex items-center mb-3 cursor-pointer hover:opacity-90 transition-opacity duration-200">
               <div className="w-8 h-8 rounded-full overflow-hidden bg-gray-300 mr-3">
                 <Image
-                  src="/api/placeholder/40/40"
+                  src="/placeholder.png"
                   alt="User profile"
                   width={40}
                   height={40}
@@ -353,24 +293,22 @@ export default function ServiceDetailPage({
                 />
               </div>
               <div>
-                <div className="font-medium">{service.user.name}</div>
                 <div className="flex items-center">
-                  <div className="flex mr-2">
-                    {renderStars(service.user.rating)}
-                  </div>
-                  <span className="text-xs text-gray-600">
-                    {service.user.announcements} annonces
-                  </span>
+                  <div className="font-medium mr-2">{service.user.name}</div>
+                  <div className="flex">{renderStars(service.user.rating)}</div>
                 </div>
+                <span className="text-xs text-gray-600">
+                  {service.user.announcements} annonces
+                </span>
               </div>
             </div>
 
-            {/* Mobile action buttons - now on same line as user */}
-            <div className="flex flex-col space-y-2">
-              <button className="border border-teal-500 text-teal-500 py-1 px-2 rounded-full text-xs">
+            {/* Mobile action buttons - now below user info with bigger size */}
+            <div className="flex space-x-3 w-full">
+              <button className="border border-teal-500 text-teal-500 py-2 px-4 rounded-full text-sm flex-1 cursor-pointer hover:bg-teal-500 hover:text-white transition-all duration-300 ease-in-out transform hover:scale-105 active:scale-95">
                 Voir profil
               </button>
-              <button className="bg-teal-500 text-white py-1 px-2 rounded-full text-xs">
+              <button className="bg-[#38AC8E] text-white py-2 px-4 rounded-full text-sm flex-1 cursor-pointer hover:bg-[#2D8A70] transition-colors duration-300 ease-in-out transform hover:scale-105 active:scale-95">
                 Intéressé
               </button>
             </div>
