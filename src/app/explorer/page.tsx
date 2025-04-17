@@ -4,22 +4,82 @@
 import React, { useState, useEffect, useRef } from "react";
 import Image from "next/image";
 import Link from "next/link";
+import ServiceCard from "./ServiceCard"; // Import the ServiceCard component
+
+// Define types for our data structure
+interface Service {
+  id: number;
+  title: string;
+  description: string;
+  category: string;
+  imageUrl: string;
+  price: number;
+  rating: number;
+  location: string;
+  createdAt: string;
+}
 
 export default function ExplorerPage() {
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedService, setSelectedService] = useState("");
   const [areaFilter, setAreaFilter] = useState("");
-  // Mock service categories
-  const serviceCategories = ["Service1", "Service2", "Service3", "Service4"];
   const [selectedCategory, setSelectedCategory] = useState("");
   const [showPopulaireDropdown, setShowPopulaireDropdown] = useState(false);
   const [selectedPopulaire, setSelectedPopulaire] = useState("Populaire");
+  const [services, setServices] = useState<Service[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
+  const [isMobile, setIsMobile] = useState(false);
+
+  // Service categories
+  const serviceCategories = ["Service1", "Service2", "Service3", "Service4"];
+
+  // API URL - internal Next.js API route
+  const API_URL = "/api/services";
+
+  // Mock data as fallback
+  const mockServices: Service[] = Array.from({ length: 16 }, (_, i) => ({
+    id: i + 1,
+    title: `Service ${i + 1}`,
+    description: `Description for service ${
+      i + 1
+    }. This is a placeholder text that describes what this service offers to customers.`,
+    category: `Service${Math.floor(i / 4) + 1}`,
+    imageUrl: i % 3 === 0 ? "/placeholder-service.jpg" : "", // Mix of images and empty strings for testing
+    price: Math.floor(Math.random() * 100) + 10, // Random price between 10 and 109
+    rating: Math.floor(Math.random() * 3) + 3, // Random rating between 3 and 5
+    location: ["Paris", "Lyon", "Bordeaux", "Vichy", "Marseille"][
+      Math.floor(Math.random() * 5)
+    ], // Random location
+    createdAt: new Date(
+      Date.now() - Math.floor(Math.random() * 30) * 24 * 60 * 60 * 1000
+    ).toISOString(), // Random date within last 30 days
+  }));
+
+  // Detect mobile view
+  useEffect(() => {
+    const handleResize = () => {
+      setIsMobile(window.innerWidth < 640); // sm breakpoint in Tailwind
+    };
+
+    // Set initial value
+    handleResize();
+
+    // Add event listener
+    window.addEventListener("resize", handleResize);
+
+    // Cleanup
+    return () => window.removeEventListener("resize", handleResize);
+  }, []);
 
   // Add this effect to handle clicks outside of the dropdown
   useEffect(() => {
-    function handleClickOutside(event: { target: any }) {
-      if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
+    function handleClickOutside(event: MouseEvent) {
+      if (
+        dropdownRef.current &&
+        !dropdownRef.current.contains(event.target as Node)
+      ) {
         setShowPopulaireDropdown(false);
       }
     }
@@ -29,16 +89,74 @@ export default function ExplorerPage() {
       document.removeEventListener("mousedown", handleClickOutside);
     };
   }, []);
-  // Mock services data (in a real app, this would come from an API)
-  const services = Array.from({ length: 16 }, (_, i) => ({
-    id: i + 1,
-    title: `Service ${i + 1}`,
-    category: `Service#${Math.floor(i / 4) + 1}`,
-    imageUrl: "/placeholder-service.jpg",
-  }));
+
+  // Function to fetch services from API
+  const fetchServices = async () => {
+    setLoading(true);
+    setError(null);
+
+    try {
+      // Build query parameters based on filters
+      const params = new URLSearchParams();
+      if (searchQuery) params.append("search", searchQuery);
+      if (selectedService) params.append("service", selectedService);
+      if (areaFilter) params.append("area", areaFilter);
+      if (selectedCategory) params.append("category", selectedCategory);
+      if (selectedPopulaire !== "Populaire") {
+        // Convert UI sort option to API parameter
+        const sortMapping: Record<string, string> = {
+          Récent: "recent",
+          "Mieux noté": "rating",
+          "Prix bas": "price_asc",
+        };
+        params.append("sort", sortMapping[selectedPopulaire] || "popular");
+      }
+
+      const queryString = params.toString() ? `?${params.toString()}` : "";
+
+      // Fetch data from API
+      const response = await fetch(`${API_URL}${queryString}`);
+
+      if (!response.ok) {
+        throw new Error(`API error: ${response.status}`);
+      }
+
+      const data = await response.json();
+      setServices(data);
+    } catch (err) {
+      console.error("Failed to fetch services:", err);
+      //setError("Failed to load services. Using mock data instead.");
+      // Fallback to mock data
+      setServices(mockServices);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Handle search button click
+  const handleSearch = () => {
+    fetchServices();
+  };
+
+  // Handle enter key press in search inputs
+  const handleKeyPress = (e: React.KeyboardEvent) => {
+    if (e.key === "Enter") {
+      handleSearch();
+    }
+  };
+
+  // Fetch data when component mounts or when filters change
+  useEffect(() => {
+    // Use a debounce for automatic filtering
+    const debounceTimer = setTimeout(() => {
+      fetchServices();
+    }, 300);
+
+    return () => clearTimeout(debounceTimer);
+  }, [selectedService, selectedCategory, selectedPopulaire]);
 
   return (
-    <div className="max-w-[1800px] mx-auto  px-4 sm:px-6 lg:px-8 py-8">
+    <div className="max-w-[1800px] mx-auto px-4 sm:px-6 lg:px-8 py-8">
       {/* Hero section with Georgia font */}
       <div className="hidden sm:block text-center mb-10">
         <h1 className="text-[62px] font-medium font-georgia mb-0">
@@ -62,6 +180,7 @@ export default function ExplorerPage() {
               className="w-full bg-transparent focus:outline-none text-gray-700 text-sm"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
+              onKeyUp={handleKeyPress}
             />
 
             {/* Services dropdown - no border */}
@@ -94,7 +213,10 @@ export default function ExplorerPage() {
             </div>
 
             {/* Search button - perfectly circular */}
-            <div className="flex items-center justify-center bg-[#38AC8E] rounded-full p-1.5 ml-2 text-white">
+            <button
+              onClick={handleSearch}
+              className="flex items-center justify-center bg-[#38AC8E] rounded-full p-1.5 ml-2 text-white hover:bg-[#2d9377] transition-colors"
+            >
               <svg
                 xmlns="http://www.w3.org/2000/svg"
                 className="h-5 w-5"
@@ -109,7 +231,7 @@ export default function ExplorerPage() {
                   d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
                 />
               </svg>
-            </div>
+            </button>
           </div>
 
           {/* Location input - right section */}
@@ -120,6 +242,7 @@ export default function ExplorerPage() {
               className="bg-transparent focus:outline-none text-gray-700 w-18 text-sm"
               value={areaFilter}
               onChange={(e) => setAreaFilter(e.target.value)}
+              onKeyUp={handleKeyPress}
             />
             <svg
               xmlns="http://www.w3.org/2000/svg"
@@ -154,6 +277,7 @@ export default function ExplorerPage() {
             className="min-w-0 w-full flex-shrink bg-transparent focus:outline-none text-gray-700 text-xs"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
+            onKeyUp={handleKeyPress}
           />
 
           {/* Services dropdown - reduced width */}
@@ -182,7 +306,10 @@ export default function ExplorerPage() {
           </div>
 
           {/* Search button - inside the container */}
-          <button className="bg-[#38AC8E] rounded-full p-1 ml-1 text-white flex-shrink-0">
+          <button
+            onClick={handleSearch}
+            className="bg-[#38AC8E] rounded-full p-1 ml-1 text-white flex-shrink-0 hover:bg-[#2d9377] active:bg-[#227a61] transition-colors"
+          >
             <svg
               xmlns="http://www.w3.org/2000/svg"
               className="h-4 w-4"
@@ -208,6 +335,7 @@ export default function ExplorerPage() {
             className="min-w-0 w-full bg-transparent focus:outline-none text-gray-700 text-xs"
             value={areaFilter}
             onChange={(e) => setAreaFilter(e.target.value)}
+            onKeyUp={handleKeyPress}
           />
           <svg
             xmlns="http://www.w3.org/2000/svg"
@@ -384,45 +512,62 @@ export default function ExplorerPage() {
           </svg>
         </button>
       </div>
+
+      {/* Mobile category tabs horizontal scrolling */}
+      <div className="sm:hidden overflow-x-auto whitespace-nowrap pb-2 mb-4 -mx-4 px-4 scrollbar-hide">
+        {serviceCategories.map((category) => {
+          const formattedCategory = category.replace(/(\d+)$/, "#$1");
+          return (
+            <button
+              key={category}
+              className={`text-gray-800 px-4 py-2 rounded-full text-sm font-medium mr-2 transition-all duration-200 ${
+                selectedCategory === category
+                  ? "bg-gray-200 shadow-sm"
+                  : "bg-white border border-gray-200"
+              }`}
+              onClick={() =>
+                setSelectedCategory(
+                  category === selectedCategory ? "" : category
+                )
+              }
+            >
+              {formattedCategory}
+            </button>
+          );
+        })}
+      </div>
+
+      {/* Loading state */}
+      {loading && (
+        <div className="flex justify-center items-center py-12">
+          <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-[#38AC8E]"></div>
+        </div>
+      )}
+
+      {/* Error state */}
+      {error && (
+        <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-md mb-6">
+          {error}
+        </div>
+      )}
+
       {/* ======= DESKTOP SERVICES GRID ======= */}
+      {!loading && (
+        <div className="hidden sm:grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-x-6 gap-y-8">
+          {services.map((service) => (
+            <ServiceCard key={service.id} service={service} isMobile={false} />
+          ))}
+        </div>
+      )}
 
-      <div className="hidden sm:grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-x-16 gap-y-2">
-        {services.map((service) => (
-          <Link
-            href={`/explorer/services/${service.id}`}
-            key={service.id}
-            className="flex flex-col"
-          >
-            {/* Card with rounded corners */}
-            <div className="w-full h-48 bg-[#38AC8E] rounded-lg mb-2 transition-transform hover:scale-105"></div>
-
-            {/* Service label with red dot */}
-            <div className="flex items-center mt-1">
-              <div className="w-6 h-6 bg-red-500 rounded-full mr-2"></div>
-              <span className="text-sm font-medium">{service.category}</span>
-            </div>
-          </Link>
-        ))}
-      </div>
       {/* ======= MOBILE SERVICES GRID ======= */}
-      <div className="sm:hidden grid grid-cols-1 gap-6">
-        {services.map((service) => (
-          <Link
-            href={`/explorer/services/${service.id}`}
-            key={service.id}
-            className="flex flex-col"
-          >
-            {/* Card with rounded corners */}
-            <div className="w-full h-44 bg-[#38AC8E] rounded-lg mb-2"></div>
-
-            {/* Service label with red dot */}
-            <div className="flex items-center mt-1">
-              <div className="w-7 h-7 bg-red-500 rounded-full mr-2"></div>
-              <span className="text-sm font-medium">Service#1</span>
-            </div>
-          </Link>
-        ))}
-      </div>
+      {!loading && (
+        <div className="sm:hidden grid grid-cols-1 gap-6">
+          {services.map((service) => (
+            <ServiceCard key={service.id} service={service} isMobile={true} />
+          ))}
+        </div>
+      )}
     </div>
   );
 }

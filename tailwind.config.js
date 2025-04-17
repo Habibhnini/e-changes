@@ -9,6 +9,7 @@ module.exports = {
     extend: {
       fontFamily: {
         cursive: ["Pacifico", "cursive"], // For the e-changes logo
+        assistant: ["Assistant", "sans-serif"],
       },
     },
   },

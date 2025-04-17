@@ -4,7 +4,7 @@
 import React from "react";
 import Image from "next/image";
 import Link from "next/link";
-import { useParams } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
 import { FaStar } from "react-icons/fa";
 import { IoWarningOutline, IoHeartOutline } from "react-icons/io5";
 import { PiShareFat } from "react-icons/pi";
@@ -13,6 +13,7 @@ export default function ServiceDetailPage() {
   // Use the useParams hook to get the id parameter
   const params = useParams();
   const id = params?.id as string;
+  const router = useRouter();
 
   // Mock service data (in a real app, this would come from an API based on the ID)
   const service = {
@@ -35,6 +36,11 @@ export default function ServiceDetailPage() {
       announcements: 2,
       rating: 4,
     },
+  };
+
+  // Function to navigate to chat page
+  const navigateToChat = () => {
+    router.push(`/explorer/chat/${id}`);
   };
 
   // Generate stars based on rating
@@ -198,9 +204,11 @@ export default function ServiceDetailPage() {
                   <button className="border border-[#38AC8E] text-[#38AC8E] py-2 px-4 rounded-full font-medium text-sm cursor-pointer hover:bg-[#38AC8E] hover:text-white transition-all duration-300 ease-in-out transform hover:scale-105 active:scale-95">
                     Voir le profil
                   </button>
-                  <button className="bg-[#38AC8E] text-white py-2 px-4 rounded-full font-medium text-sm cursor-pointer hover:bg-[#2D8A70] transition-colors duration-300 ease-in-out transform hover:scale-105 active:scale-95">
-                    Je suis intéressé
-                  </button>
+                  <Link href={`/explorer/chat/${id}`}>
+                    <button className="bg-[#38AC8E] text-white py-2 px-4 rounded-full font-medium text-sm cursor-pointer hover:bg-[#2D8A70] transition-colors duration-300 ease-in-out transform hover:scale-105 active:scale-95">
+                      Je suis intéressé
+                    </button>
+                  </Link>
                 </div>
               </div>
             </div>
@@ -308,9 +316,11 @@ export default function ServiceDetailPage() {
               <button className="border border-teal-500 text-teal-500 py-2 px-4 rounded-full text-sm flex-1 cursor-pointer hover:bg-teal-500 hover:text-white transition-all duration-300 ease-in-out transform hover:scale-105 active:scale-95">
                 Voir profil
               </button>
-              <button className="bg-[#38AC8E] text-white py-2 px-4 rounded-full text-sm flex-1 cursor-pointer hover:bg-[#2D8A70] transition-colors duration-300 ease-in-out transform hover:scale-105 active:scale-95">
-                Intéressé
-              </button>
+              <Link href={`/explorer/chat/${id}`} className="flex-1">
+                <button className="bg-[#38AC8E] text-white py-2 px-4 rounded-full text-sm w-full cursor-pointer hover:bg-[#2D8A70] transition-colors duration-300 ease-in-out transform hover:scale-105 active:scale-95">
+                  Intéressé
+                </button>
+              </Link>
             </div>
           </div>
         </div>

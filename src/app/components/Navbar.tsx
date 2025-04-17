@@ -125,13 +125,15 @@ const Navbar: React.FC<NavbarProps> = ({
                 {/* User profile */}
                 <div className="ml-2 relative">
                   <div className="h-10 w-10 rounded-full overflow-hidden border-2 border-gray-200">
-                    <Image
-                      src="/placeholder.png"
-                      alt="User profile"
-                      width={40}
-                      height={40}
-                      className="h-full w-full object-cover"
-                    />
+                    <Link href={"/profile"}>
+                      <Image
+                        src="/placeholder.png"
+                        alt="User profile"
+                        width={40}
+                        height={40}
+                        className="h-full w-full object-cover"
+                      />
+                    </Link>
                   </div>
                 </div>
               </>

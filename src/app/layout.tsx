@@ -33,10 +33,18 @@ export default function RootLayout({
           href="https://fonts.googleapis.com/css2?family=Pacifico&display=swap"
           rel="stylesheet"
         />
+        <link
+          rel="stylesheet"
+          href="https://fonts.googleapis.com/css2?family=Assistant:wght@200;300;400;500;600;700;800&display=swap"
+        />
+
         {/* Add Georgia font */}
         <style>{`
           .font-georgia {
             font-family: Georgia, serif;
+          }
+          .font-assistant {
+            font-family: 'Assistant', sans-serif;
           }
         `}</style>
       </head>
