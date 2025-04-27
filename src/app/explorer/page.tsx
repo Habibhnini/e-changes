@@ -31,7 +31,7 @@ export default function ExplorerPage() {
   const [error, setError] = useState<string | null>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
   const [isMobile, setIsMobile] = useState(false);
-
+  const searchTimeout = useRef<NodeJS.Timeout | null>(null);
   // Service categories
   const serviceCategories = ["Service1", "Service2", "Service3", "Service4"];
 
@@ -89,7 +89,13 @@ export default function ExplorerPage() {
       document.removeEventListener("mousedown", handleClickOutside);
     };
   }, []);
-
+  useEffect(() => {
+    return () => {
+      if (searchTimeout.current) {
+        clearTimeout(searchTimeout.current);
+      }
+    };
+  }, []);
   // Function to fetch services from API
   const fetchServices = async () => {
     setLoading(true);
@@ -99,14 +105,15 @@ export default function ExplorerPage() {
       // Build query parameters based on filters
       const params = new URLSearchParams();
       if (searchQuery) params.append("search", searchQuery);
-      if (selectedService) params.append("service", selectedService);
-      if (areaFilter) params.append("area", areaFilter);
+      if (selectedService) params.append("type", selectedService); // Changed to match your API
+      if (areaFilter) params.append("location", areaFilter); // You might need to add this field to your API
       if (selectedCategory) params.append("category", selectedCategory);
+
+      // Sort mapping
       if (selectedPopulaire !== "Populaire") {
-        // Convert UI sort option to API parameter
         const sortMapping: Record<string, string> = {
-          Récent: "recent",
-          "Mieux noté": "rating",
+          Récent: "created_at_desc",
+          "Mieux noté": "rating_desc", // You'll need to add rating to your model
           "Prix bas": "price_asc",
         };
         params.append("sort", sortMapping[selectedPopulaire] || "popular");
@@ -114,18 +121,34 @@ export default function ExplorerPage() {
 
       const queryString = params.toString() ? `?${params.toString()}` : "";
 
-      // Fetch data from API
-      const response = await fetch(`${API_URL}${queryString}`);
+      // Use your Symfony API endpoint
+      const response = await fetch(`/api/service${queryString}`);
 
       if (!response.ok) {
         throw new Error(`API error: ${response.status}`);
       }
 
       const data = await response.json();
-      setServices(data);
+
+      // Map the Symfony API response to your frontend Service interface
+      const mappedServices: Service[] = data.services.map(
+        (apiService: any) => ({
+          id: apiService.id,
+          title: apiService.title,
+          description: apiService.description,
+          category: apiService.category.name, // Access nested category name
+          imageUrl: "/placeholder-service.jpg", // You'll need to add image URLs to your API
+          price: apiService.price,
+          rating: 4, // You'll need to add this to your API model
+          location: "Vichy", // You'll need to add location to your model
+          createdAt: apiService.createdAt,
+        })
+      );
+
+      setServices(mappedServices);
     } catch (err) {
       console.error("Failed to fetch services:", err);
-      //setError("Failed to load services. Using mock data instead.");
+      setError("Failed to load services. Using mock data instead.");
       // Fallback to mock data
       setServices(mockServices);
     } finally {
@@ -134,16 +157,22 @@ export default function ExplorerPage() {
   };
 
   // Handle search button click
-  const handleSearch = () => {
-    fetchServices();
+  const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value;
+    setSearchQuery(value);
+
+    // Clear any pending timeout to avoid multiple requests
+    if (searchTimeout.current) {
+      clearTimeout(searchTimeout.current);
+    }
+
+    // Set a new timeout to delay the API call
+    searchTimeout.current = setTimeout(() => {
+      fetchServices();
+    }, 300);
   };
 
   // Handle enter key press in search inputs
-  const handleKeyPress = (e: React.KeyboardEvent) => {
-    if (e.key === "Enter") {
-      handleSearch();
-    }
-  };
 
   // Fetch data when component mounts or when filters change
   useEffect(() => {
@@ -179,8 +208,7 @@ export default function ExplorerPage() {
               placeholder="Que recherchez vous?"
               className="w-full bg-transparent focus:outline-none text-gray-700 text-sm"
               value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              onKeyUp={handleKeyPress}
+              onChange={handleSearchChange}
             />
 
             {/* Services dropdown - no border */}
@@ -213,10 +241,7 @@ export default function ExplorerPage() {
             </div>
 
             {/* Search button - perfectly circular */}
-            <button
-              onClick={handleSearch}
-              className="flex items-center justify-center bg-[#38AC8E] rounded-full p-1.5 ml-2 text-white hover:bg-[#2d9377] transition-colors"
-            >
+            <button className="flex items-center justify-center bg-[#38AC8E] rounded-full p-1.5 ml-2 text-white hover:bg-[#2d9377] transition-colors">
               <svg
                 xmlns="http://www.w3.org/2000/svg"
                 className="h-5 w-5"
@@ -242,7 +267,6 @@ export default function ExplorerPage() {
               className="bg-transparent focus:outline-none text-gray-700 w-18 text-sm"
               value={areaFilter}
               onChange={(e) => setAreaFilter(e.target.value)}
-              onKeyUp={handleKeyPress}
             />
             <svg
               xmlns="http://www.w3.org/2000/svg"
@@ -276,8 +300,7 @@ export default function ExplorerPage() {
             placeholder="Que recherchez vous?"
             className="min-w-0 w-full flex-shrink bg-transparent focus:outline-none text-gray-700 text-xs"
             value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            onKeyUp={handleKeyPress}
+            onChange={handleSearchChange}
           />
 
           {/* Services dropdown - reduced width */}
@@ -306,10 +329,7 @@ export default function ExplorerPage() {
           </div>
 
           {/* Search button - inside the container */}
-          <button
-            onClick={handleSearch}
-            className="bg-[#38AC8E] rounded-full p-1 ml-1 text-white flex-shrink-0 hover:bg-[#2d9377] active:bg-[#227a61] transition-colors"
-          >
+          <button className="bg-[#38AC8E] rounded-full p-1 ml-1 text-white flex-shrink-0 hover:bg-[#2d9377] active:bg-[#227a61] transition-colors">
             <svg
               xmlns="http://www.w3.org/2000/svg"
               className="h-4 w-4"
@@ -334,8 +354,7 @@ export default function ExplorerPage() {
             placeholder="Vichy"
             className="min-w-0 w-full bg-transparent focus:outline-none text-gray-700 text-xs"
             value={areaFilter}
-            onChange={(e) => setAreaFilter(e.target.value)}
-            onKeyUp={handleKeyPress}
+            onChange={handleSearchChange}
           />
           <svg
             xmlns="http://www.w3.org/2000/svg"
