@@ -144,7 +144,7 @@ const Navbar: React.FC<NavbarProps> = ({
               // Not logged in - show login button with full rounded corners
               <div className="flex-shrink-0">
                 <Link
-                  href="/login"
+                  href="/auth"
                   className="border border-teal-500 text-teal-500 rounded-full px-4 py-2 text-sm font-medium hover:bg-teal-50"
                 >
                   Connexion / Inscription

@@ -3,9 +3,11 @@
 import React, { useState } from "react";
 import Image from "next/image";
 import { IoLocationOutline } from "react-icons/io5";
+import { useAuth } from "../contexts/AuthContext";
+
 export default function ProfilePage() {
   const [activeTab, setActiveTab] = useState("donnees");
-
+  const { logout } = useAuth();
   // Mock user data
   const userData = {
     email: "JulieA@mail.com",
@@ -93,7 +95,12 @@ export default function ProfilePage() {
         >
           Adhésion
         </button>
-        <button className="px-2 py-1 sm:px-4 sm:py-2 rounded-lg text-xs sm:text-sm font-medium bg-red-500 text-white cursor-pointer hover:bg-red-600">
+        <button
+          className="px-2 py-1 sm:px-4 sm:py-2 rounded-lg text-xs sm:text-sm font-medium bg-red-500 text-white cursor-pointer hover:bg-red-600"
+          onClick={async () => {
+            await logout();
+          }}
+        >
           Déconnexion
         </button>
       </div>

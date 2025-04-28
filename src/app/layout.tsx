@@ -1,9 +1,10 @@
 // app/layout.tsx
 import type { Metadata } from "next";
 import { Inter } from "next/font/google";
-import Navbar from "./components/Navbar";
+
 import "./globals.css";
-import { AuthProvider } from "./contexts/AuthContext";
+import { AuthProvider, useAuth } from "./contexts/AuthContext";
+import NavbarWrapper from "./components/NavbarWarpper";
 
 const inter = Inter({ subsets: ["latin"] });
 
@@ -17,10 +18,6 @@ export default function RootLayout({
 }: {
   children: React.ReactNode;
 }) {
-  // You would normally get this from your auth context
-  const isLoggedIn = true; // or true to show the logged-in version
-  const points = 250;
-
   return (
     <html lang="en">
       <head>
@@ -51,7 +48,7 @@ export default function RootLayout({
       </head>
       <body className={inter.className}>
         <AuthProvider>
-          <Navbar isLoggedIn={isLoggedIn} points={points} />
+          <NavbarWrapper />
           {children}
         </AuthProvider>
       </body>

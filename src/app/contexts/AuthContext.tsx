@@ -8,23 +8,57 @@ interface User {
   email: string;
   firstName?: string;
   lastName?: string;
+  city?: string;
   energyBalance: number;
   roles: string[];
+  verified?: boolean;
+}
+
+interface RegistrationData {
+  email: string;
+  password: string;
+  firstName?: string;
+  lastName?: string;
+  city?: string;
+  referralCode?: string;
+  addressLine1?: string;
+  addressLine2?: string;
+  postalCode?: string;
+  region?: string;
+  country?: string;
+  acceptedTerms?: boolean;
+  photoId?: File;
+  idCardFront?: File;
+  idCardBack?: File;
 }
 
 interface AuthContextType {
   user: User | null;
   token: string | null;
   loading: boolean;
-  login: (email: string, password: string) => Promise<void>;
-  register: (
+  login: (
     email: string,
     password: string,
-    firstName?: string,
-    lastName?: string
+    rememberMe?: boolean
   ) => Promise<void>;
+  register: (registrationData: RegistrationData) => Promise<void>;
   logout: () => void;
   isAuthenticated: boolean;
+  uploadIdentityDocuments: (
+    photoId: File,
+    idCardFront: File,
+    idCardBack: File
+  ) => Promise<void>;
+  completeSubscription: (billingDetails: BillingDetails) => Promise<void>;
+}
+
+interface BillingDetails {
+  country: string;
+  addressLine1: string;
+  addressLine2?: string;
+  city: string;
+  postalCode: string;
+  region?: string;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -81,7 +115,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   };
 
   // Login function
-  const login = async (email: string, password: string) => {
+  const login = async (email: string, password: string, rememberMe = false) => {
     setLoading(true);
     try {
       const response = await fetch("/api/login_check", {
@@ -97,7 +131,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       }
 
       const data = await response.json();
-      localStorage.setItem("token", data.token);
+
+      // Only store token in localStorage if rememberMe is true
+      if (rememberMe) {
+        localStorage.setItem("token", data.token);
+      }
+
       setToken(data.token);
       await fetchUserProfile(data.token);
     } catch (error) {
@@ -108,13 +147,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
-  // Register function
-  const register = async (
-    email: string,
-    password: string,
-    firstName?: string,
-    lastName?: string
-  ) => {
+  // Register function - Updated for first step of registration
+  const register = async (registrationData: RegistrationData) => {
     setLoading(true);
     try {
       const response = await fetch("/api/register", {
@@ -123,10 +157,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          email,
-          password,
-          firstName,
-          lastName,
+          email: registrationData.email,
+          password: registrationData.password,
+          firstName: registrationData.firstName,
+          lastName: registrationData.lastName,
+          city: registrationData.city,
+          referralCode: registrationData.referralCode,
+          acceptedTerms: registrationData.acceptedTerms,
         }),
       });
 
@@ -139,6 +176,37 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       localStorage.setItem("token", data.token);
       setToken(data.token);
       setUser(data.user);
+
+      // If we have identity documents, upload them right away
+      if (
+        registrationData.photoId &&
+        registrationData.idCardFront &&
+        registrationData.idCardBack
+      ) {
+        await uploadIdentityDocuments(
+          registrationData.photoId,
+          registrationData.idCardFront,
+          registrationData.idCardBack
+        );
+      }
+
+      // If we have billing details, complete the subscription
+      if (
+        registrationData.country &&
+        registrationData.addressLine1 &&
+        registrationData.postalCode
+      ) {
+        await completeSubscription({
+          country: registrationData.country,
+          addressLine1: registrationData.addressLine1,
+          addressLine2: registrationData.addressLine2,
+          city: registrationData.city || "",
+          postalCode: registrationData.postalCode,
+          region: registrationData.region,
+        });
+      }
+
+      return data;
     } catch (error) {
       console.error("Registration error:", error);
       throw error;
@@ -147,12 +215,82 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
+  // Upload identity documents
+  const uploadIdentityDocuments = async (
+    photoId: File,
+    idCardFront: File,
+    idCardBack: File
+  ) => {
+    if (!token) {
+      throw new Error("Not authenticated");
+    }
+
+    try {
+      const formData = new FormData();
+      formData.append("photoId", photoId);
+      formData.append("idCardFront", idCardFront);
+      formData.append("idCardBack", idCardBack);
+
+      const response = await fetch("/api/verify-identity", {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+        body: formData,
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || "Identity verification failed");
+      }
+
+      // Refresh user profile to get updated verification status
+      await fetchUserProfile(token);
+
+      return await response.json();
+    } catch (error) {
+      console.error("Identity verification error:", error);
+      throw error;
+    }
+  };
+
+  // Complete subscription with billing details
+  const completeSubscription = async (billingDetails: BillingDetails) => {
+    if (!token) {
+      throw new Error("Not authenticated");
+    }
+
+    try {
+      const response = await fetch("/api/subscribe", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify(billingDetails),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || "Subscription failed");
+      }
+
+      // Refresh user profile to get updated subscription status
+      await fetchUserProfile(token);
+
+      return await response.json();
+    } catch (error) {
+      console.error("Subscription error:", error);
+      throw error;
+    }
+  };
+
   // Logout function
   const logout = () => {
     localStorage.removeItem("token");
     setToken(null);
     setUser(null);
-    router.push("/login");
+    router.push("/auth");
   };
 
   return (
@@ -164,6 +302,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         login,
         register,
         logout,
+        uploadIdentityDocuments,
+        completeSubscription,
         isAuthenticated: !!user,
       }}
     >

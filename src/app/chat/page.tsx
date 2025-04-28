@@ -194,7 +194,9 @@ export default function ChatPage() {
             // Find messages that only exist in the current state (optimistic ones)
             const tempMessages = prevMessages.filter(
               (prevMsg) =>
-                !data.messages.some((newMsg) => newMsg.id === prevMsg.id)
+                !data.messages.some(
+                  (newMsg: { id: any }) => newMsg.id === prevMsg.id
+                )
             );
 
             // Only scroll if there are new messages
