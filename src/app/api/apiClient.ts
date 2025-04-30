@@ -1,3 +1,32 @@
+// First, let's define your ServiceDetail interface to match what your component expects
+interface ServiceDetail {
+  id: number;
+  title: string;
+  description: string;
+  price: number;
+  type: string;
+  status: string;
+  createdAt: string;
+  category: {
+    id: number;
+    name: string;
+  };
+  vendor: {
+    id: number;
+    email: string;
+    name: string;
+    profileImage: string;
+    rating: number;
+  };
+  transaction?: {
+    id: number;
+    status: string;
+    createdAt: string;
+  } | null;
+  isOwner?: boolean;
+}
+
+// Let's update your ApiClient class with this type
 class ApiClient {
   private getToken(): string | null {
     if (typeof window !== "undefined") {
@@ -21,7 +50,7 @@ class ApiClient {
     return headers;
   }
 
-  async get(url: string, includeAuth = true): Promise<any> {
+  async get<T>(url: string, includeAuth = true): Promise<T> {
     const response = await fetch(url, {
       method: "GET",
       headers: this.getHeaders(includeAuth),
@@ -39,10 +68,14 @@ class ApiClient {
       throw new Error(error.message || "An error occurred");
     }
 
-    return response.json();
+    return response.json() as Promise<T>;
   }
 
-  async post(url: string, data: any, includeAuth = true): Promise<any> {
+  async post<T, U = unknown>(
+    url: string,
+    data: U,
+    includeAuth = true
+  ): Promise<T> {
     const response = await fetch(url, {
       method: "POST",
       headers: this.getHeaders(includeAuth),
@@ -61,10 +94,10 @@ class ApiClient {
       throw new Error(error.message || "An error occurred");
     }
 
-    return response.json();
+    return response.json() as Promise<T>;
   }
 
-  async put(url: string, data: any): Promise<any> {
+  async put<T, U = unknown>(url: string, data: U): Promise<T> {
     const response = await fetch(url, {
       method: "PUT",
       headers: this.getHeaders(),
@@ -83,10 +116,10 @@ class ApiClient {
       throw new Error(error.message || "An error occurred");
     }
 
-    return response.json();
+    return response.json() as Promise<T>;
   }
 
-  async delete(url: string): Promise<any> {
+  async delete<T>(url: string): Promise<T> {
     const response = await fetch(url, {
       method: "DELETE",
       headers: this.getHeaders(),
@@ -104,7 +137,7 @@ class ApiClient {
       throw new Error(error.message || "An error occurred");
     }
 
-    return response.json();
+    return response.json() as Promise<T>;
   }
 
   // Authentication methods
@@ -148,8 +181,54 @@ class ApiClient {
     return this.post(`/api/messages/service/${serviceId}/start`, { content });
   }
 
-  async getServiceDetail(serviceId: string) {
-    return this.get(`/api/service/${serviceId}`);
+  // Update the getServiceDetail method to use the proper type
+  async getServiceDetail(serviceId: string): Promise<ServiceDetail> {
+    // Get the raw data from the API
+    const rawData = await this.get<any>(`/api/service/${serviceId}`);
+
+    // Transform the data to match the expected ServiceDetail interface
+    // This handles cases where the API response doesn't perfectly match your expected interface
+    const serviceDetail: ServiceDetail = {
+      id: Number(rawData.id), // Convert string ID to number if needed
+      title: rawData.title || "",
+      description: rawData.description || "",
+      price: typeof rawData.price === "number" ? rawData.price : 0,
+      type: rawData.type || "standard",
+      status: rawData.status || "active",
+      createdAt: rawData.createdAt || new Date().toISOString(),
+
+      // Ensure category has the right structure
+      category: {
+        id: rawData.category?.id ? Number(rawData.category.id) : 0,
+        name: rawData.category?.name || "",
+      },
+
+      // Ensure vendor has the right structure
+      vendor: {
+        id: rawData.vendor?.id ? Number(rawData.vendor.id) : 0,
+        email: rawData.vendor?.email || "",
+        name: rawData.vendor?.name || "",
+        profileImage: rawData.vendor?.profileImage || "",
+        rating:
+          typeof rawData.vendor?.rating === "number"
+            ? rawData.vendor.rating
+            : 0,
+      },
+
+      // Optional transaction data
+      transaction: rawData.transaction
+        ? {
+            id: Number(rawData.transaction.id),
+            status: rawData.transaction.status || "",
+            createdAt:
+              rawData.transaction.createdAt || new Date().toISOString(),
+          }
+        : null,
+
+      isOwner: !!rawData.isOwner,
+    };
+
+    return serviceDetail;
   }
 }
 

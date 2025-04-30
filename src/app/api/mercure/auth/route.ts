@@ -1,6 +1,6 @@
 // app/api/mercure/auth/route.ts
 import { NextResponse } from "next/server";
-const jwt = require("jsonwebtoken");
+import jwt from "jsonwebtoken";
 
 export async function GET() {
   try {

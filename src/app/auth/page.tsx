@@ -45,7 +45,6 @@ export default function AuthPage() {
     useAuth();
   const router = useRouter();
   const searchParams = useSearchParams();
-  const redirect = searchParams.get("redirect") || "/";
 
   const handleLoginSubmit = async (e: React.FormEvent) => {
     e.preventDefault();

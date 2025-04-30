@@ -34,7 +34,7 @@ export async function GET(request: NextRequest) {
         Accept: "text/event-stream",
       },
       duplex: "half", // Required for streaming responses
-    });
+    } as RequestInit);
 
     if (!response.ok) {
       console.error(
