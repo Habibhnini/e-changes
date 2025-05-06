@@ -54,9 +54,11 @@ export default function ProfilePage() {
         if (servicesData && servicesData.services) {
           // Filtrer les services et les biens
           const services = servicesData.services.filter(
-            (s) => s.type === "service"
+            (s: { type: string }) => s.type === "service"
           );
-          const biens = servicesData.services.filter((s) => s.type === "bien");
+          const biens = servicesData.services.filter(
+            (s: { type: string }) => s.type === "bien"
+          );
 
           setUserServices(services);
           setUserBiens(biens);
