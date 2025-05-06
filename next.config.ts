@@ -2,17 +2,15 @@ import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
   reactStrictMode: true,
-//  output: "export",
   images: { unoptimized: true },
   eslint: {
-    // Disable ESLint during build
     ignoreDuringBuilds: true,
   },
   async rewrites() {
     return [
       {
         source: "/api/:path*",
-        destination: "http://symfony:8000/api/:path*", // Adjust to your Symfony API URL
+        destination: `${process.env.NEXT_PUBLIC_API_URL}/api/:path*`,
       },
     ];
   },

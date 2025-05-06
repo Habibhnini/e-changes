@@ -8,6 +8,7 @@ import RegistrationStep1 from "../components/AuthForms/RegistrationStep1";
 import RegistrationStep2 from "../components/AuthForms/RegistrationStep2";
 import RegistrationStep3 from "../components/AuthForms/RegistrationStep3";
 import RegistrationStep4 from "../components/AuthForms/RegistrationStep4";
+import apiClient from "../api/apiClient";
 
 export default function AuthPage() {
   const [activeTab, setActiveTab] = useState("login");
@@ -122,36 +123,53 @@ export default function AuthPage() {
     setError("");
 
     try {
-      // First register the user
-      await register({
-        email,
-        password,
-        firstName,
-        lastName,
-        city,
-        referralCode,
-        acceptedTerms: acceptTerms,
-      });
+      // Create FormData object for sending both text data and files
+      const formData = new FormData();
 
-      // Then upload identity documents
-      if (photoId && idCardFront && idCardBack) {
-        await uploadIdentityDocuments(photoId, idCardFront, idCardBack);
+      // Add all user registration data
+      formData.append("email", email);
+      formData.append("password", password);
+      formData.append("firstName", firstName);
+      formData.append("lastName", lastName);
+      formData.append("city", city);
+      formData.append("referralCode", referralCode || "");
+      formData.append("acceptedTerms", acceptTerms.toString());
+
+      // Add address information
+      formData.append("country", country);
+      formData.append("addressLine1", addressLine1);
+      formData.append("addressLine2", addressLine2 || "");
+      formData.append("postalCode", postalCode);
+      formData.append("region", region || "");
+
+      // Add identity verification files
+      if (photoId) {
+        formData.append("photoId", photoId);
+      }
+      if (idCardFront) {
+        formData.append("idCardFront", idCardFront);
+      }
+      if (idCardBack) {
+        formData.append("idCardBack", idCardBack);
       }
 
-      // Finally complete subscription with billing details
-      await completeSubscription({
-        country,
-        addressLine1,
-        addressLine2,
-        city,
-        postalCode,
-        region,
-      });
+      // Use the API client instead of direct fetch
+      const result = await apiClient.registerWithFormData(formData);
 
-      router.push("/profile");
+      // Handle successful registration
+      if (result.token) {
+        localStorage.setItem("token", result.token);
+        window.location.href = "/explorer";
+      } else {
+        throw new Error("No token received");
+      }
     } catch (err) {
       console.error("Registration error:", err);
-      setError("Une erreur est survenue lors de l'inscription");
+      setError(
+        err instanceof Error
+          ? err.message
+          : "Une erreur est survenue lors de l'inscription"
+      );
     } finally {
       setIsLoading(false);
     }

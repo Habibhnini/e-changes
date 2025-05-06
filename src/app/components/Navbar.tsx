@@ -4,6 +4,7 @@
 import React, { useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
+import { useAuth } from "../contexts/AuthContext";
 
 interface NavbarProps {
   isLoggedIn?: boolean;
@@ -15,7 +16,7 @@ const Navbar: React.FC<NavbarProps> = ({
   points = 250,
 }) => {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
-
+  const { user } = useAuth();
   return (
     <nav className="border-b border-gray-200">
       <div className="max-w-full mx-auto px-4 sm:px-6 lg:px-8">
@@ -130,7 +131,11 @@ const Navbar: React.FC<NavbarProps> = ({
                   <div className="h-10 w-10 rounded-full overflow-hidden border-2 border-gray-200">
                     <Link href={"/profile"}>
                       <Image
-                        src="/placeholder.png"
+                        src={
+                          user?.userInfo?.photoIdPath
+                            ? `${process.env.NEXT_PUBLIC_API_URL}${user.userInfo.photoIdPath}`
+                            : "/placeholder.png"
+                        }
                         alt="User profile"
                         width={40}
                         height={40}

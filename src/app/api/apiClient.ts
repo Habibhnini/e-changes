@@ -145,19 +145,30 @@ class ApiClient {
     return this.post("/api/login_check", { email, password }, false);
   }
 
-  async register(
-    email: string,
-    password: string,
-    firstName?: string,
-    lastName?: string
-  ): Promise<any> {
-    return this.post(
-      "/api/register",
-      { email, password, firstName, lastName },
-      false
-    );
-  }
+  // Add this method to your ApiClient class
+  async registerWithFormData(formData: FormData): Promise<any> {
+    const response = await fetch("/api/register", {
+      method: "POST",
+      // Do NOT set Content-Type header when using FormData
+      headers: {
+        // Only include auth if needed
+      },
+      body: formData,
+    });
 
+    if (!response.ok) {
+      if (response.status === 401) {
+        if (typeof window !== "undefined") {
+          localStorage.removeItem("token");
+          window.location.href = "/login";
+        }
+      }
+      const error = await response.json().catch(() => ({}));
+      throw new Error(error.message || "An error occurred");
+    }
+
+    return response.json();
+  }
   async getMe(): Promise<any> {
     return this.get("/api/me");
   }

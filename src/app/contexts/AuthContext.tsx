@@ -4,6 +4,7 @@ import React, { createContext, useContext, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 
 interface User {
+  userInfo: any;
   id: number;
   email: string;
   firstName?: string;
@@ -12,6 +13,7 @@ interface User {
   energyBalance: number;
   roles: string[];
   verified?: boolean;
+  referralCode?: string;
 }
 
 interface RegistrationData {

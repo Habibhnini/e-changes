@@ -423,31 +423,6 @@ export default function ExplorerPage() {
           </div>
         </div>
 
-        <div className="flex space-x-2">
-          {serviceCategories.map((category, index) => {
-            // Format category to include # before the number
-            const formattedCategory = category.replace(/(\d+)$/, "#$1");
-
-            return (
-              <button
-                key={category}
-                className={`text-gray-800 px-4 py-2 rounded-full text-sm font-medium transition-all duration-200 ease-in-out transform hover:scale-105 cursor-pointer ${
-                  selectedCategory === category
-                    ? "bg-gray-200 shadow-sm"
-                    : "bg-white hover:bg-gray-50"
-                }`}
-                onClick={() =>
-                  setSelectedCategory(
-                    category === selectedCategory ? "" : category
-                  )
-                }
-              >
-                {formattedCategory}
-              </button>
-            );
-          })}
-        </div>
-
         <button className="flex items-center text-gray-700 px-4 py-2 rounded-xl border border-gray-300 transition-all duration-200 hover:bg-gray-50 hover:shadow-sm">
           <span>Filtres</span>
           <svg
@@ -533,28 +508,6 @@ export default function ExplorerPage() {
       </div>
 
       {/* Mobile category tabs horizontal scrolling */}
-      <div className="sm:hidden overflow-x-auto whitespace-nowrap pb-2 mb-4 -mx-4 px-4 scrollbar-hide">
-        {serviceCategories.map((category) => {
-          const formattedCategory = category.replace(/(\d+)$/, "#$1");
-          return (
-            <button
-              key={category}
-              className={`text-gray-800 px-4 py-2 rounded-full text-sm font-medium mr-2 transition-all duration-200 ${
-                selectedCategory === category
-                  ? "bg-gray-200 shadow-sm"
-                  : "bg-white border border-gray-200"
-              }`}
-              onClick={() =>
-                setSelectedCategory(
-                  category === selectedCategory ? "" : category
-                )
-              }
-            >
-              {formattedCategory}
-            </button>
-          );
-        })}
-      </div>
 
       {/* Loading state */}
       {loading && (

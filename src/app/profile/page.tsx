@@ -1,25 +1,24 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import Image from "next/image";
 import { IoLocationOutline } from "react-icons/io5";
 import { useAuth } from "../contexts/AuthContext";
+import ServiceModal from "../components/ServiceModal";
+import { Service } from "../api/services/routes";
 
 export default function ProfilePage() {
   const [activeTab, setActiveTab] = useState("donnees");
-  const { logout } = useAuth();
+  const [showModal, setShowModal] = useState(false);
+  const [modalType, setModalType] = useState<"service" | "bien" | null>(null);
+  // États pour les données réelles
+  const [userServices, setUserServices] = useState<Service[]>([]);
+  const [userBiens, setUserBiens] = useState<Service[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const { logout, user } = useAuth();
   // Mock user data
-  const userData = {
-    email: "JulieA@mail.com",
-    firstName: "Julie",
-    lastName: "Anderson",
-    city: "Vichy",
-    presentation: "Présentation de l'utilisateur",
-    profession: "Dentiste",
-    referralCode: "JulieA1256",
-    referrals: 25,
-  };
-
+  console.log(user?.userInfo?.photoIdPath);
   // Mock subscription data
   const subscriptionData = {
     price: "20€",
@@ -35,22 +34,66 @@ export default function ProfilePage() {
     ],
   };
 
-  // Mock services data
-  const servicesData = [
-    { id: "Service#1", type: "service", title: "Service 1" },
-    { id: "Service#2", type: "service", title: "Service 2" },
-    { id: "Service#3", type: "service", title: "Service 3" },
-    { id: "Service#4", type: "service", title: "Service 4" },
-    { id: "Service#5", type: "service", title: "Service 5" },
-    { id: "Service#6", type: "service", title: "Service 6" },
-    { id: "Bien#1", type: "bien", title: "Bien 1" },
-    { id: "Bien#2", type: "bien", title: "Bien 2" },
-    { id: "Bien#3", type: "bien", title: "Bien 3" },
-    { id: "Bien#4", type: "bien", title: "Bien 4" },
-    { id: "Bien#5", type: "bien", title: "Bien 5" },
-    { id: "Bien#6", type: "bien", title: "Bien 6" },
-  ];
+  const openModal = (type: "service" | "bien") => {
+    setModalType(type);
+    setShowModal(true);
+  };
+  const closeModal = () => setShowModal(false);
 
+  // Charger les données réelles au chargement de la page
+  useEffect(() => {
+    const fetchProfileData = async () => {
+      setLoading(true);
+      try {
+        // Récupérer les services de l'utilisateur
+        const servicesResponse = await fetch(
+          `/api/service?vendorId=${user?.id || ""}`
+        );
+        const servicesData = await servicesResponse.json();
+
+        if (servicesData && servicesData.services) {
+          // Filtrer les services et les biens
+          const services = servicesData.services.filter(
+            (s) => s.type === "service"
+          );
+          const biens = servicesData.services.filter((s) => s.type === "bien");
+
+          setUserServices(services);
+          setUserBiens(biens);
+        }
+      } catch (err) {
+        console.error("Erreur lors du chargement des données:", err);
+        setError(
+          "Impossible de charger les données. Veuillez réessayer plus tard."
+        );
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchProfileData();
+  }, [user]);
+  const handleCreated = async () => {
+    // Recharger les services/biens au lieu de recharger toute la page
+    try {
+      const servicesResponse = await fetch(
+        `/api/service?vendorId=${user?.id || ""}`
+      );
+      const servicesData = await servicesResponse.json();
+
+      if (servicesData && servicesData.services) {
+        const services = servicesData.services.filter(
+          (s) => s.type === "service"
+        );
+        const biens = servicesData.services.filter((s) => s.type === "bien");
+
+        setUserServices(services);
+        setUserBiens(biens);
+      }
+    } catch (err) {
+      console.error("Erreur lors du rechargement des services:", err);
+    }
+  };
   return (
     <div className="max-w-[90%] mx-auto p-4 font-assistant">
       {/* Navigation Tabs */}
@@ -113,28 +156,34 @@ export default function ProfilePage() {
             <div className="flex flex-col items-center">
               <div className="w-24 h-24 relative mb-2">
                 <Image
-                  src="/placeholder.png"
+                  src={
+                    user?.userInfo?.photoIdPath
+                      ? `${process.env.NEXT_PUBLIC_API_URL}${user.userInfo.photoIdPath}`
+                      : "/placeholder.png"
+                  }
                   alt="Profile"
                   fill
                   className="rounded-full object-cover"
                 />
               </div>
-              <h2 className="text-lg font-semibold">Julie A</h2>
-              <p className="text-sm text-gray-500">@JulieA1256</p>
+              <h2 className="text-lg font-semibold">
+                {user?.firstName} {user?.lastName}
+              </h2>
+              <p className="text-sm text-gray-500">{user?.email}</p>
             </div>
 
             <div className="mt-4 space-y-3">
               <div className="flex justify-between">
-                <p className="text-sm text-gray-500">Métier</p>
-                <p className="text-sm font-semibold">{userData.profession}</p>
+                <p className="text-sm text-gray-500">energy Balance</p>
+                <p className="text-sm font-semibold">{user?.energyBalance}</p>
               </div>
               <div className="flex justify-between">
                 <p className="text-sm text-gray-500">Localisation</p>
-                <p className="text-sm font-semibold">{userData.city}</p>
+                <p className="text-sm font-semibold">{user?.userInfo?.city}</p>
               </div>
               <div>
-                <p className="text-sm text-gray-500">Présentation</p>
-                <p className="text-sm font-semibold">{userData.presentation}</p>
+                <p className="text-sm text-gray-500">Referal Code</p>
+                <p className="text-sm font-semibold">{user?.referralCode}</p>
               </div>
             </div>
           </div>
@@ -145,157 +194,185 @@ export default function ProfilePage() {
             <div>
               <div className="flex justify-between items-center mb-4">
                 <h2 className="text-xl font-medium">Mes services</h2>
-                <button className="bg-[#38AC8E] text-white px-4 py-2 rounded-lg text-sm hover:bg-teal-600">
+                <button
+                  onClick={() => openModal("service")}
+                  className="bg-[#38AC8E] text-white px-4 py-2 rounded-lg text-sm hover:bg-teal-600"
+                >
                   Ajouter un service
                 </button>
               </div>
 
               <div className="overflow-x-auto pb-4">
                 <div className="flex gap-4 min-w-max">
-                  {servicesData
-                    .filter((item) => item.type === "service")
-                    .map((service) => (
-                      <div
-                        key={service.id}
-                        className="w-72 ml-2 group transform transition-transform duration-300 hover:scale-[1.03]"
-                      >
-                        <div className="w-full h-48 bg-white rounded-lg mb-2 transition-all duration-300 group-hover:shadow-lg relative overflow-hidden border border-gray-200">
-                          {/* Placeholder image */}
-                          <div className="flex items-center justify-center h-full w-full ">
-                            <Image
-                              src="/logo.jpg"
-                              alt="Logo placeholder"
-                              width={120}
-                              height={120}
-                              className="object-contain transition-transform duration-300 group-hover:scale-110"
-                            />
-                          </div>
+                  {userServices.length === 0 ? (
+                    <div className="bg-gray-50 rounded-lg p-6 text-center">
+                      <p className="text-gray-500">
+                        Vous n'avez pas encore ajouté de services.
+                      </p>
+                    </div>
+                  ) : (
+                    <div className="overflow-x-auto pb-4">
+                      <div className="flex gap-4 min-w-max">
+                        {userServices.map((service) => (
+                          <div
+                            key={service.id}
+                            className="w-72 ml-2 group transform transition-transform duration-300 hover:scale-[1.03]"
+                          >
+                            <div className="w-full h-48 bg-white rounded-lg mb-2 transition-all duration-300 group-hover:shadow-lg relative overflow-hidden border border-gray-200">
+                              {/* Placeholder image */}
+                              <div className="flex items-center justify-center h-full w-full ">
+                                <Image
+                                  src="/logo.jpg"
+                                  alt="Logo placeholder"
+                                  width={120}
+                                  height={120}
+                                  className="object-contain transition-transform duration-300 group-hover:scale-110"
+                                />
+                              </div>
 
-                          {/* Permanent partial gradient overlay at the bottom */}
-                          <div className="absolute inset-x-0 bottom-0 h-1/2 bg-gradient-to-t from-black/45 to-transparent rounded-b-lg">
-                            {/* Bottom section with price and location */}
-                            <div className="absolute bottom-0 left-0 right-0 p-3">
-                              <div className="flex justify-between items-center">
-                                {/* Price in the bottom left corner */}
-                                <div className="text-[#fce070] text-lg font-medium flex items-center">
-                                  15
-                                  <Image
-                                    src="/coin.png"
-                                    alt="User profile"
-                                    width={40}
-                                    height={40}
-                                    className=" object-cover ml-2 w-5 h-5"
-                                  />
-                                </div>
-
-                                {/* Location in the bottom right corner */}
-                                <div className="text-white text-sm flex items-center">
-                                  <IoLocationOutline className="mr-1 w-5 h-5" />
-                                  Vichy
+                              {/* Gradient overlay at the bottom */}
+                              <div className="absolute inset-x-0 bottom-0 h-1/2 bg-gradient-to-t from-black/45 to-transparent rounded-b-lg">
+                                <div className="absolute bottom-0 left-0 right-0 p-3">
+                                  <div className="flex justify-between items-center">
+                                    <div className="text-[#fce070] text-lg font-medium flex items-center">
+                                      {service.price}
+                                      <Image
+                                        src="/coin.png"
+                                        alt="User profile"
+                                        width={40}
+                                        height={40}
+                                        className="object-cover ml-2 w-5 h-5"
+                                      />
+                                    </div>
+                                    <div className="text-white text-sm flex items-center">
+                                      <IoLocationOutline className="mr-1 w-5 h-5" />
+                                      {user?.userInfo?.city || "Non spécifié"}
+                                    </div>
+                                  </div>
                                 </div>
                               </div>
                             </div>
-                          </div>
 
-                          {/* Additional overlay that appears on hover */}
-                          <div className="absolute inset-0 bg-gradient-to-t from-black/45 via-black/40 to-transparent opacity-0 group-hover:transition-opacity duration-300 rounded-lg"></div>
-                        </div>
-
-                        {/* Service information below the image */}
-                        <div className="mt-1 ml-4 flex items-center">
-                          <div>
-                            <h3 className="font-medium text-gray-800 group-hover:text-[#38AC8E] transition-colors duration-200">
-                              {service.id}
-                            </h3>
-                            <p className="text-xs text-gray-500 line-clamp-2">
-                              Description du service
-                            </p>
+                            <div className="mt-1 ml-4 flex items-center">
+                              <div>
+                                <h3 className="font-medium text-gray-800 group-hover:text-[#38AC8E] transition-colors duration-200">
+                                  {service.title}
+                                </h3>
+                                <p className="text-xs text-gray-500 line-clamp-2">
+                                  {service.description}
+                                </p>
+                              </div>
+                            </div>
                           </div>
-                        </div>
+                        ))}
                       </div>
-                    ))}
+                    </div>
+                  )}
                 </div>
               </div>
             </div>
 
             {/* Biens */}
+            {/* Biens */}
             <div>
               <div className="flex justify-between items-center mb-4">
                 <h2 className="text-xl font-medium">Mes biens</h2>
-                <button className="bg-[#DEB887] text-white px-4 py-2 rounded-lg text-sm hover:bg-[#C8A275]">
+                <button
+                  onClick={() => openModal("bien")}
+                  className="bg-[#DEB887] text-white px-4 py-2 rounded-lg text-sm hover:bg-[#C8A275]"
+                >
                   Ajouter un bien
                 </button>
               </div>
 
               <div className="overflow-x-auto pb-4">
                 <div className="flex gap-4 min-w-max">
-                  {servicesData
-                    .filter((item) => item.type === "bien")
-                    .map((bien) => (
-                      <div
-                        key={bien.id}
-                        className="w-72 ml-2 group transform transition-transform duration-300 hover:scale-[1.03]"
-                      >
-                        <div className="w-full h-48 bg-white rounded-lg mb-2 transition-all duration-300 group-hover:shadow-lg relative overflow-hidden border border-gray-200">
-                          {/* Placeholder image */}
-                          <div className="flex items-center justify-center h-full w-full ">
-                            <Image
-                              src="/logo.jpg"
-                              alt="Logo placeholder"
-                              width={120}
-                              height={120}
-                              className="object-contain transition-transform duration-300 group-hover:scale-110"
-                            />
-                          </div>
+                  {userBiens.length === 0 ? (
+                    <div className="bg-gray-50 rounded-lg p-6 text-center">
+                      <p className="text-gray-500">
+                        Vous n'avez pas encore ajouté de biens.
+                      </p>
+                    </div>
+                  ) : (
+                    <div className="overflow-x-auto pb-4">
+                      <div className="flex gap-4 min-w-max">
+                        {userBiens.map((bien) => (
+                          <div
+                            key={bien.id}
+                            className="w-72 ml-2 group transform transition-transform duration-300 hover:scale-[1.03]"
+                          >
+                            <div className="w-full h-48 bg-white rounded-lg mb-2 transition-all duration-300 group-hover:shadow-lg relative overflow-hidden border border-gray-200">
+                              {/* Placeholder image */}
+                              <div className="flex items-center justify-center h-full w-full ">
+                                <Image
+                                  src="/logo.jpg"
+                                  alt="Logo placeholder"
+                                  width={120}
+                                  height={120}
+                                  className="object-contain transition-transform duration-300 group-hover:scale-110"
+                                />
+                              </div>
 
-                          {/* Permanent partial gradient overlay at the bottom */}
-                          <div className="absolute inset-x-0 bottom-0 h-1/2 bg-gradient-to-t from-black/45 to-transparent rounded-b-lg">
-                            {/* Bottom section with price and location */}
-                            <div className="absolute bottom-0 left-0 right-0 p-3">
-                              <div className="flex justify-between items-center">
-                                {/* Price in the bottom left corner */}
-                                <div className="text-[#fce070] text-lg font-medium flex items-center">
-                                  20
-                                  <Image
-                                    src="/coin.png"
-                                    alt="User profile"
-                                    width={40}
-                                    height={40}
-                                    className=" object-cover ml-2 w-5 h-5"
-                                  />
-                                </div>
+                              {/* Permanent partial gradient overlay at the bottom */}
+                              <div className="absolute inset-x-0 bottom-0 h-1/2 bg-gradient-to-t from-black/45 to-transparent rounded-b-lg">
+                                {/* Bottom section with price and location */}
+                                <div className="absolute bottom-0 left-0 right-0 p-3">
+                                  <div className="flex justify-between items-center">
+                                    {/* Price in the bottom left corner */}
+                                    <div className="text-[#fce070] text-lg font-medium flex items-center">
+                                      {bien.price}
+                                      <Image
+                                        src="/coin.png"
+                                        alt="User profile"
+                                        width={40}
+                                        height={40}
+                                        className="object-cover ml-2 w-5 h-5"
+                                      />
+                                    </div>
 
-                                {/* Location in the bottom right corner */}
-                                <div className="text-white text-sm flex items-center">
-                                  <IoLocationOutline className="mr-1 w-5 h-5" />
-                                  Vichy
+                                    {/* Location in the bottom right corner */}
+                                    <div className="text-white text-sm flex items-center">
+                                      <IoLocationOutline className="mr-1 w-5 h-5" />
+                                      {user?.userInfo?.city || "Non spécifié"}
+                                    </div>
+                                  </div>
                                 </div>
+                              </div>
+
+                              {/* Additional overlay that appears on hover */}
+                              <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/40 to-transparent opacity-0 group-hover:transition-opacity duration-300 rounded-lg"></div>
+                            </div>
+
+                            {/* Bien information below the image */}
+                            <div className="mt-1 ml-4 flex items-center">
+                              <div>
+                                <h3 className="font-medium text-gray-800 group-hover:text-[#DEB887] transition-colors duration-200">
+                                  {bien.title}
+                                </h3>
+                                <p className="text-xs text-gray-500 line-clamp-2">
+                                  {bien.description}
+                                </p>
                               </div>
                             </div>
                           </div>
-
-                          {/* Additional overlay that appears on hover */}
-                          <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/40 to-transparent opacity-0 group-hover:transition-opacity duration-300 rounded-lg"></div>
-                        </div>
-
-                        {/* Bien information below the image */}
-                        <div className="mt-1 ml-4 flex items-center">
-                          <div>
-                            <h3 className="font-medium text-gray-800 group-hover:text-[#DEB887] transition-colors duration-200">
-                              {bien.id}
-                            </h3>
-                            <p className="text-xs text-gray-500 line-clamp-2">
-                              Description du bien
-                            </p>
-                          </div>
-                        </div>
+                        ))}
                       </div>
-                    ))}
+                    </div>
+                  )}
                 </div>
               </div>
             </div>
           </div>
         </div>
+      )}
+      {/* Modal */}
+      {showModal && modalType && user && (
+        <ServiceModal
+          type={modalType}
+          vendorId={user.id}
+          onClose={closeModal}
+          onCreated={handleCreated}
+        />
       )}
 
       {/* Données Personnelles Section */}
@@ -335,13 +412,13 @@ export default function ProfilePage() {
                   <p className="text-gray-600 text-sm mb-1">
                     Nombre de parrainage actuel
                   </p>
-                  <p>{userData.referrals}</p>
+                  <p>{user?.referrals}</p>
                 </div>
                 <div>
                   <p className="text-gray-600 text-sm mb-1">
                     Votre code de parrainage
                   </p>
-                  <p>{userData.referralCode}</p>
+                  <p>{user?.referralCode}</p>
                 </div>
               </div>
             </div>
@@ -352,7 +429,11 @@ export default function ProfilePage() {
             <p className="text-gray-600 text-sm mb-2">Image de profil</p>
             <div className="flex items-center gap-4">
               <Image
-                src="/placeholder.png"
+                src={
+                  user?.userInfo?.photoIdPath
+                    ? `${process.env.NEXT_PUBLIC_API_URL}${user.userInfo.photoIdPath}`
+                    : "/placeholder.png"
+                }
                 alt="Profile"
                 width={64}
                 height={64}
@@ -370,7 +451,7 @@ export default function ProfilePage() {
               <label className="block text-gray-600 text-sm mb-2">E-mail</label>
               <input
                 type="email"
-                defaultValue={userData.email}
+                defaultValue={user?.email}
                 className="w-full border border-gray-300 rounded-xl p-2"
               />
             </div>
@@ -405,7 +486,7 @@ export default function ProfilePage() {
                 </label>
                 <input
                   type="text"
-                  defaultValue={userData.firstName}
+                  defaultValue={user?.firstName}
                   className="w-full border border-gray-300 rounded-xl p-2"
                 />
               </div>
@@ -415,7 +496,7 @@ export default function ProfilePage() {
                 </label>
                 <input
                   type="text"
-                  defaultValue={userData.lastName}
+                  defaultValue={user?.lastName}
                   className="w-full border border-gray-300 rounded-xl p-2"
                 />
               </div>
@@ -425,6 +506,7 @@ export default function ProfilePage() {
               <label className="block text-gray-600 text-sm mb-2">Ville</label>
               <input
                 type="text"
+                defaultValue={user?.userInfo?.city}
                 placeholder="Écrivez ici..."
                 className="w-full border border-gray-300 rounded-xl p-2"
               />
