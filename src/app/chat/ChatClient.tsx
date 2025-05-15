@@ -6,32 +6,16 @@ import { useSearchParams, useRouter } from "next/navigation";
 import { FaStar } from "react-icons/fa";
 import { BsPaperclip } from "react-icons/bs";
 import { IoChevronBack, IoChevronForward } from "react-icons/io5";
-
-// Get auth token for API requests
-const getAuthToken = (): string | null => {
-  return localStorage.getItem("token");
-};
-
-// Create headers with auth token
-const getAuthHeaders = (): Record<string, string> => {
-  const token = getAuthToken();
-  const headers: Record<string, string> = {
-    "Content-Type": "application/json",
-  };
-
-  if (token) {
-    headers["Authorization"] = `Bearer ${token}`;
-  }
-
-  return headers;
-};
+import TransactionDetails from "./TransactionDetails";
+import { useAuth } from "../contexts/AuthContext";
+import TransactionPropositionDetails from "./TransactionPropositionDetails";
 
 export default function ChatPage() {
   // Router and params
   const searchParams = useSearchParams();
   const router = useRouter();
   const selectedTransactionId = searchParams.get("transaction") || null;
-
+  const { user: currentUser, token } = useAuth();
   // WebSocket reference - single connection for simplicity
   const eventSourceRef = useRef<EventSource | null>(null);
 
@@ -58,8 +42,13 @@ export default function ChatPage() {
   const [conversations, setConversations] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [currentUser, setCurrentUser] = useState<any>(null);
+  const [successMessage, setSuccessMessage] = useState<string | null>(null);
+  const previousAmountRef = useRef<number | null>(null);
 
+  const getAuthHeaders = () =>
+    token
+      ? { "Content-Type": "application/json", Authorization: `Bearer ${token}` }
+      : { "Content-Type": "application/json" };
   // Check screen size
   const isMobile = screenSize.width < 768;
   const isTablet = screenSize.width >= 768 && screenSize.width < 1024;
@@ -72,6 +61,24 @@ export default function ChatPage() {
         chatContainerRef.current.scrollHeight;
     }
   };
+  useEffect(() => {
+    if (!selectedTransactionId) return;
+
+    (async () => {
+      try {
+        const res = await fetch(`/api/transactions/${selectedTransactionId}`, {
+          method: "GET",
+          headers: getAuthHeaders(), // ← adds Authorization: Bearer <token>
+        });
+        if (!res.ok) throw new Error(res.statusText);
+        const { transaction } = await res.json();
+        setTransaction(transaction);
+      } catch (err) {
+        console.error("Failed to load transaction:", err);
+        setError("Impossible de charger la transaction");
+      }
+    })();
+  }, [selectedTransactionId]);
 
   // Update screen size on resize
   useEffect(() => {
@@ -89,18 +96,16 @@ export default function ChatPage() {
   // Helper function to get Mercure authentication token
   async function authenticateMercure() {
     try {
-      const response = await fetch("/api/mercure/auth");
+      const url = `http://localhost:8000/api/mercure/auth?transaction=${selectedTransactionId}`;
+      const response = await fetch(url, {
+        headers: getAuthHeaders(), // Bearer <app-jwt> etc.
+      });
 
       if (!response.ok) {
-        throw new Error(`Auth failed: ${response.status}`);
+        throw new Error(`Mercure auth failed: ${response.status}`);
       }
-
       const data = await response.json();
-      if (!data.token) {
-        throw new Error("No token received");
-      }
-
-      return data.token;
+      return data.token as string;
     } catch (err) {
       setError("Authentication failed: " + (err as Error).message);
       return null;
@@ -134,37 +139,75 @@ export default function ChatPage() {
 
       const eventSource = new EventSource(url.toString());
 
+      // In your ChatPage.js component, add these debugging logs:
+      // Check if the EventSource is being created properly
+
+      // In the onopen handler, log successful connection
       eventSource.onopen = () => {
         setConnected(true);
         setError(null);
       };
 
+      // In the onmessage handler, log ALL received messages
       eventSource.onmessage = (event) => {
         try {
           const data = JSON.parse(event.data);
+          // inside eventSource.onmessage in ChatPage.tsx
+          if (data.type === "transaction_updated" && data.transaction) {
+            setTransaction((prev: any) => {
+              const updated = {
+                ...prev,
+                ...data.transaction,
+              };
+
+              // Detect amount change and show success popup
+              if (
+                typeof previousAmountRef.current === "number" &&
+                data.transaction.energyAmount !== previousAmountRef.current
+              ) {
+                setSuccessMessage(
+                  "✅ Le montant a été mis à jour avec succès."
+                );
+                setTimeout(() => setSuccessMessage(null), 3000);
+              }
+
+              previousAmountRef.current = data.transaction.energyAmount;
+
+              return updated;
+            });
+          }
 
           if (data.type === "new_message" && data.message) {
-            // Only add if it's not from current user
-            if (data.message.sender.id !== currentUser?.id) {
-              setMessages((prev) => {
-                // Check for duplicates
-                if (prev.some((m) => m.id === data.message.id)) {
-                  return prev;
-                }
-
-                // Scroll to bottom after state update
-                setTimeout(scrollToBottom, 100);
-
-                return [...prev, data.message];
-              });
+            // ← SKIP messages you yourself just sent
+            if (data.message.sender.id === currentUser?.id) {
+              return;
             }
+
+            // Then the existing dedupe logic
+            setMessages((prev) => {
+              if (prev.some((m) => m.id === data.message.id)) {
+                return prev;
+              }
+
+              setTimeout(scrollToBottom, 100);
+              return [
+                ...prev,
+                {
+                  ...data.message,
+                  sender: {
+                    ...data.message.sender,
+                    isYou: data.message.sender.id === currentUser?.id,
+                  },
+                },
+              ];
+            });
+          } else {
           }
-        } catch (error) {
-          // Silently handle parsing errors
-        }
+        } catch (error) {}
       };
 
-      eventSource.onerror = () => {
+      // Log all errors
+      eventSource.onerror = (error) => {
         setConnected(false);
         setError("Connection error. Please try refreshing the page.");
       };
@@ -176,77 +219,6 @@ export default function ChatPage() {
   }
 
   // Add polling fallback for when Mercure isn't working
-  useEffect(() => {
-    if (!selectedTransactionId) return;
-
-    // Poll for new messages every few seconds
-    const interval = setInterval(async () => {
-      try {
-        const response = await fetch(
-          `/api/messages/transaction/${selectedTransactionId}`,
-          { headers: getAuthHeaders() }
-        );
-
-        if (response.ok) {
-          const data = await response.json();
-          // Update messages, but avoid flickering by preserving optimistic messages
-          setMessages((prevMessages) => {
-            // Find messages that only exist in the current state (optimistic ones)
-            const tempMessages = prevMessages.filter(
-              (prevMsg) =>
-                !data.messages.some(
-                  (newMsg: { id: any }) => newMsg.id === prevMsg.id
-                )
-            );
-
-            // Only scroll if there are new messages
-            if (
-              data.messages.length >
-              prevMessages.length - tempMessages.length
-            ) {
-              setTimeout(scrollToBottom, 100);
-            }
-
-            // Combine server messages with any temporary ones
-            return [...data.messages, ...tempMessages];
-          });
-        }
-      } catch (error) {
-        // Silently handle polling errors
-      }
-    }, 3000); // Poll every 3 seconds
-
-    return () => clearInterval(interval);
-  }, [selectedTransactionId]);
-
-  // Load current user profile
-  useEffect(() => {
-    const fetchCurrentUser = async () => {
-      try {
-        const response = await fetch("/api/user/profile", {
-          headers: getAuthHeaders(),
-        });
-
-        if (response.status === 401) {
-          router.push("/login?redirect=/chat");
-          return;
-        }
-
-        if (!response.ok) throw new Error("Failed to load user profile");
-
-        const data = await response.json();
-        setCurrentUser({
-          id: data.id,
-          name: data.fullName || data.email,
-          profileImage: data.profileImage || "/profile-placeholder.jpg",
-        });
-      } catch (err) {
-        setError("Could not load your profile");
-      }
-    };
-
-    fetchCurrentUser();
-  }, [router]);
 
   // Connect to Mercure when the component mounts or transaction changes
   useEffect(() => {
@@ -319,7 +291,26 @@ export default function ChatPage() {
         const data = await response.json();
         setMessages(data.messages);
         setService(data.service);
-        setTransaction(data.transaction);
+        setTransaction((prev: any) => {
+          const updated = {
+            ...prev,
+            ...data.transaction,
+          };
+
+          // Detect amount change and show success popup
+          if (
+            typeof previousAmountRef.current === "number" &&
+            data.transaction.energyAmount !== previousAmountRef.current
+          ) {
+            setSuccessMessage("✅ Le montant a été mis à jour avec succès.");
+            setTimeout(() => setSuccessMessage(null), 3000);
+          }
+
+          previousAmountRef.current = data.transaction.energyAmount;
+
+          return updated;
+        });
+
         setOtherUser(data.otherUser);
         setLoading(false);
 
@@ -363,89 +354,94 @@ export default function ChatPage() {
   const handleSendMessage = useCallback(
     async (e: React.FormEvent) => {
       e.preventDefault();
-      if (messageInput.trim() && selectedTransactionId) {
-        // Store the message content before clearing input
-        const messageContent = messageInput;
+      if (!messageInput.trim() || !selectedTransactionId) return;
 
-        // Optimistically add message to UI
-        const tempMessage = {
-          id: `temp-${Date.now()}`, // temporary ID
-          content: messageContent,
-          sender: {
-            id: currentUser?.id || 0,
-            name: currentUser?.name || "Current User",
-            profileImage:
-              currentUser?.profileImage || "/profile-placeholder.jpg",
-            isYou: true,
-          },
-          createdAt: new Date().toISOString(),
-          isRead: false,
-        };
+      const messageContent = messageInput;
 
-        // Add message to UI immediately
-        setMessages((prev) => [...prev, tempMessage]);
+      // 1) Build a proper display name
+      const nameParts = [currentUser?.firstName, currentUser?.lastName].filter(
+        Boolean
+      );
+      const name =
+        nameParts.length > 0
+          ? nameParts.join(" ")
+          : (currentUser?.lastName && currentUser?.firstName) || "Unknown";
 
-        // Clear input
-        setMessageInput("");
-
-        // Refocus the input after sending
-        setTimeout(() => {
-          if (messageInputRef.current) {
-            messageInputRef.current.focus();
-          }
-        }, 0);
-
-        // Scroll to bottom after sending message
-        setTimeout(scrollToBottom, 100);
-
-        try {
-          const response = await fetch(
-            `/api/messages/transaction/${selectedTransactionId}/reply`,
-            {
-              method: "POST",
-              headers: getAuthHeaders(),
-              body: JSON.stringify({ content: messageContent }),
-            }
-          );
-
-          if (response.status === 401) {
-            setError("Your session has expired. Please log in again.");
-            setTimeout(() => {
-              router.push(
-                `/login?redirect=/chat?transaction=${selectedTransactionId}`
-              );
-            }, 2000);
-            return;
-          }
-
-          if (!response.ok) throw new Error("Failed to send message");
-
-          const sentMessage = await response.json();
-
-          // Replace the temporary message with the server response
-          setMessages((prev) =>
-            prev.map((msg) =>
-              msg.id === tempMessage.id
-                ? {
-                    ...sentMessage,
-                    sender: {
-                      ...sentMessage.sender,
-                      isYou: true,
-                    },
-                  }
-                : msg
-            )
-          );
-        } catch (err) {
-          // Remove the optimistic message if it failed to send
-          setMessages((prev) =>
-            prev.filter((msg) => msg.id !== tempMessage.id)
-          );
-          setError("Failed to send message");
+      // 2) Build a valid profileImage string
+      const photoPath = currentUser?.userInfo?.photoIdPath ?? "";
+      let profileImage = "";
+      if (photoPath) {
+        if (photoPath.startsWith("http")) {
+          profileImage = photoPath;
+        } else if (photoPath.startsWith("/")) {
+          profileImage = photoPath;
+        } else {
+          const apiRoot = process.env.NEXT_PUBLIC_API_URL?.replace(/\/$/, "");
+          profileImage = apiRoot ? `${apiRoot}/${photoPath}` : photoPath;
         }
       }
+
+      // 3) Create the temp message
+      const tempMessage = {
+        id: `temp-${Date.now()}`,
+        content: messageContent,
+        sender: {
+          id: currentUser!.id,
+          name,
+          profileImage, // guaranteed to be a string (maybe empty)
+          isYou: true,
+        },
+        createdAt: new Date().toISOString(),
+        isRead: false,
+      };
+
+      // Optimistically add it
+      setMessages((prev) => [...prev, tempMessage]);
+      setMessageInput("");
+      scrollToBottom();
+
+      try {
+        const response = await fetch(
+          `/api/messages/transaction/${selectedTransactionId}/reply`,
+          {
+            method: "POST",
+            headers: getAuthHeaders(),
+            body: JSON.stringify({ content: messageContent }),
+          }
+        );
+
+        if (response.status === 401) {
+          setError("Your session has expired. Please log in again.");
+          setTimeout(() => {
+            router.push(
+              `/login?redirect=/chat?transaction=${selectedTransactionId}`
+            );
+          }, 2000);
+          return;
+        }
+
+        if (!response.ok) throw new Error("Failed to send message");
+
+        const sentMessage = await response.json();
+
+        // Replace temp with the real message
+        setMessages((prev) =>
+          prev.map((msg) =>
+            msg.id === tempMessage.id
+              ? {
+                  ...sentMessage,
+                  sender: { ...sentMessage.sender, isYou: true },
+                }
+              : msg
+          )
+        );
+      } catch (err) {
+        // Remove the temp if it failed
+        setMessages((prev) => prev.filter((msg) => msg.id !== tempMessage.id));
+        setError("Failed to send message");
+      }
     },
-    [messageInput, selectedTransactionId, router, currentUser]
+    [messageInput, selectedTransactionId, currentUser, router]
   );
 
   // Handle message input change
@@ -635,11 +631,15 @@ export default function ChatPage() {
               <div className="flex items-start">
                 <div className="w-10 h-10 bg-gray-300 rounded-full overflow-hidden flex-shrink-0">
                   <Image
-                    src="/placeholder.png"
+                    src={
+                      convo.user.profileImage
+                        ? `${process.env.NEXT_PUBLIC_API_URL}${convo.user.profileImage}`
+                        : "/placeholder.png"
+                    }
                     alt={convo.user.name}
                     width={40}
                     height={40}
-                    className="rounded-full"
+                    className="h-full w-full object-cover"
                   />
                 </div>
                 <div className="ml-3 flex-1">
@@ -769,11 +769,15 @@ export default function ChatPage() {
                       <div className="mr-3 flex-shrink-0">
                         <div className="w-10 h-10 bg-gray-300 rounded-full overflow-hidden">
                           <Image
-                            src="/placeholder.png"
+                            src={
+                              message.sender.profileImage
+                                ? `${process.env.NEXT_PUBLIC_API_URL}${message.sender.profileImage}`
+                                : "/placeholder.png"
+                            }
                             alt={message.sender.name}
                             width={40}
                             height={40}
-                            className="rounded-full"
+                            className="h-full w-full object-cover"
                           />
                         </div>
                       </div>
@@ -859,7 +863,7 @@ export default function ChatPage() {
         <div className="flex items-center p-3 border-b border-gray-200">
           <button
             onClick={handleBackToChat}
-            className="flex items-center text-gray-700 font-semibold text-[15px]"
+            className="flex items-center text-gray-700 font-semibold text-[15px] cursor-pointer"
           >
             <IoChevronBack className="mr-1" /> Retour
           </button>
@@ -868,111 +872,102 @@ export default function ChatPage() {
           </h2>
         </div>
       )}
+      {successMessage && (
+        <div className="fixed top-6 left-1/2 transform -translate-x-1/2 z-50 px-4 py-2 bg-green-600 text-white text-sm rounded-lg shadow-lg animate-fade-in-out">
+          {successMessage}
+        </div>
+      )}
 
-      <div className="p-4">
-        {!isMobile && !isTablet && (
-          <h2 className="font-medium text-lg mb-3">À propos de cet échange</h2>
-        )}
+      {transaction && service && service.vendor && (
+        <TransactionDetails
+          transactionId={selectedTransactionId!}
+          service={service}
+          transaction={transaction}
+          currentUser={currentUser}
+          screenSize={screenSize}
+          formatMessageDate={formatMessageDate}
+          formatTransactionStatus={formatTransactionStatus}
+          onUpdateTransaction={(updatedTx) => setTransaction(updatedTx)}
+          successMessage={successMessage}
+        />
+      )}
 
-        {service && (
-          <>
-            {transaction && (
-              <div className="mb-4 p-3 rounded-lg border border-gray-200">
-                <div className="font-medium mb-2">Statut de la transaction</div>
-                <div
-                  className={`text-sm font-medium ${
-                    transaction.status === "created"
-                      ? "text-blue-500"
-                      : transaction.status === "negotiation"
-                      ? "text-purple-500"
-                      : transaction.status === "success"
-                      ? "text-green-500"
-                      : transaction.status === "delivery"
-                      ? "text-orange-500"
-                      : transaction.status === "validation"
-                      ? "text-yellow-500"
-                      : transaction.status === "completed"
-                      ? "text-green-600"
-                      : "text-red-500"
-                  }`}
-                >
-                  {formatTransactionStatus(transaction.status)}
-                </div>
-                <div className="text-xs text-gray-500 mt-1">
-                  Créée le {formatMessageDate(transaction.createdAt)}
-                </div>
-                <div className="text-sm mt-2">
-                  <span className="text-gray-600">Montant:</span>{" "}
-                  {transaction.energyAmount}
-                  <Image
-                    src="/coin.png"
-                    alt="Energy"
-                    width={20}
-                    height={20}
-                    className="inline-block ml-1 h-4 w-4"
-                  />
-                </div>
-              </div>
-            )}
+      {/* Use the new TransactionDetails component
+      <TransactionDetails
+        transactionId={selectedTransactionId}
+        service={service}
+        transaction={transaction}
+        otherUser={otherUser}
+        currentUser={currentUser}
+        onSendMessage={async (content) => {
+          // Create a programmatic send function
+          const tempMessage = {
+            id: `temp-${Date.now()}`,
+            content: content,
+            sender: {
+              id: currentUser?.id || 0,
+              name:
+                (currentUser?.lastName && currentUser.firstName) ||
+                "Current User",
+              profileImage:
+                currentUser?.userInfo?.profileImage ||
+                "/profile-placeholder.jpg",
+              isYou: true,
+            },
+            createdAt: new Date().toISOString(),
+            isRead: false,
+          };
 
-            <div className="mb-4">
-              <h3 className="font-medium">{service.title}</h3>
-              <p className="text-[15px] text-gray-400 mt-1">
-                {service.fullDescription}
-              </p>
-            </div>
+          // Add message to UI immediately
+          setMessages((prev) => [...prev, tempMessage]);
 
-            <div className="space-y-4 mt-6">
-              <div className="flex justify-between">
-                <span className="text-[15px] text-gray-600">Localisation</span>
-                <span className="text-[15px] font-medium">
-                  {service.details?.location || "Non spécifié"}
-                </span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-[15px] text-gray-600">Durée</span>
-                <span className="text-[15px] font-medium">
-                  {service.details?.duration || "Non spécifié"}
-                </span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-[15px] text-gray-600">Prix</span>
-                <span className="text-[15px] font-medium">{service.price}</span>
-              </div>
-            </div>
+          try {
+            const response = await fetch(
+              `/api/messages/transaction/${selectedTransactionId}/reply`,
+              {
+                method: "POST",
+                headers: getAuthHeaders(),
+                body: JSON.stringify({ content }),
+              }
+            );
 
-            <div className="mt-6 border-t pt-4 border-gray-300">
-              <div
-                className={`flex ${
-                  isNarrowDesktop ? "flex-col" : "flex-row"
-                } gap-2 ${isNarrowDesktop ? "" : "justify-center"}`}
-              >
-                <button
-                  className={`px-4 py-2 border border-red-500 text-red-500 rounded-lg text-sm hover:bg-red-50 transition-colors cursor-pointer ${
-                    isNarrowDesktop ? "w-full" : ""
-                  }`}
-                >
-                  Signaler
-                </button>
-                <button
-                  className={`px-4 py-2 bg-gray-200 text-gray-700 rounded-lg text-sm hover:bg-gray-300 transition-colors cursor-pointer ${
-                    isNarrowDesktop ? "w-full" : ""
-                  }`}
-                >
-                  Annuler
-                </button>
-                <button
-                  className={`px-4 py-2 bg-[#38AC8E] text-white rounded-lg text-sm hover:bg-teal-600 transition-colors cursor-pointer ${
-                    isNarrowDesktop ? "w-full" : ""
-                  }`}
-                >
-                  Valider
-                </button>
-              </div>
-            </div>
-          </>
-        )}
-      </div>
+            if (!response.ok) throw new Error("Failed to send message");
+
+            const sentMessage = await response.json();
+
+            // Replace the temporary message with the server response
+            setMessages((prev) =>
+              prev.map((msg) =>
+                msg.id === tempMessage.id
+                  ? {
+                      ...sentMessage,
+                      sender: {
+                        ...sentMessage.sender,
+                        isYou: true,
+                      },
+                    }
+                  : msg
+              )
+            );
+
+            // Scroll to bottom after sending message
+            setTimeout(scrollToBottom, 100);
+          } catch (err) {
+            // Remove the optimistic message if it failed to send
+            setMessages((prev) =>
+              prev.filter((msg) => msg.id !== tempMessage.id)
+            );
+            console.error("Failed to send message:", err);
+          }
+        }}
+        screenSize={screenSize}
+        formatMessageDate={formatMessageDate}
+        formatTransactionStatus={formatTransactionStatus}
+        onUpdateTransaction={(updatedTransaction) => {
+          setTransaction(updatedTransaction);
+        }}
+      />
+       */}
     </div>
   );
 

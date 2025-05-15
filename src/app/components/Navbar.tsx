@@ -5,6 +5,8 @@ import React, { useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { useAuth } from "../contexts/AuthContext";
+import { FaRegEnvelope, FaRegEnvelopeOpen } from "react-icons/fa";
+import { PiEnvelopeSimpleBold } from "react-icons/pi";
 
 interface NavbarProps {
   isLoggedIn?: boolean;
@@ -81,7 +83,10 @@ const Navbar: React.FC<NavbarProps> = ({
             {isLoggedIn ? (
               <>
                 {/* Points - only on desktop */}
-                <div className="flex items-center px-3 py-1 rounded-full  mr-4">
+                <Link
+                  href="/wallet"
+                  className="flex items-center px-3 py-1 rounded-full  mr-4"
+                >
                   <Image
                     src="/coin.png"
                     alt="User profile"
@@ -90,17 +95,17 @@ const Navbar: React.FC<NavbarProps> = ({
                     className=" object-cover mr-2 w-5 h-5"
                   />
                   <span className="text-[#F4C300] font-medium">{points}</span>
-                </div>
+                </Link>
                 {/* Settings icon */}
-                <button className="p-2 rounded-md text-gray-500 hover:text-gray-700 mr-2">
-                  <Image
-                    src="/settings.png"
-                    alt="User profile"
-                    width={40}
-                    height={40}
-                    className="w-5 h-5 object-cover"
+                <Link
+                  href={"/chat"}
+                  className="p-2 rounded-md text-gray-500 hover:text-gray-700 mr-2"
+                >
+                  <PiEnvelopeSimpleBold
+                    className="w-6 h-6 text-black"
+                    fontSize="bold"
                   />
-                </button>
+                </Link>
                 {/* Notification bell */}
                 <Link
                   href={"/chat"}
@@ -116,7 +121,10 @@ const Navbar: React.FC<NavbarProps> = ({
                 </Link>
 
                 {/* Eco icon */}
-                <button className="p-2 rounded-md text-teal-500 hover:text-teal-600 mr-2">
+                <Link
+                  href={"/transactions"}
+                  className="p-2 rounded-md text-teal-500 hover:text-teal-600 mr-2"
+                >
                   <Image
                     src="/shake.png"
                     alt="User profile"
@@ -124,7 +132,7 @@ const Navbar: React.FC<NavbarProps> = ({
                     height={40}
                     className="w-5 h-5 object-cover"
                   />
-                </button>
+                </Link>
 
                 {/* User profile */}
                 <div className="ml-2 relative">

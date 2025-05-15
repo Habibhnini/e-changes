@@ -61,7 +61,7 @@ class ApiClient {
         // Handle unauthorized (expired token, etc.)
         if (typeof window !== "undefined") {
           localStorage.removeItem("token");
-          window.location.href = "/login";
+          window.location.href = "/auth";
         }
       }
       const error = await response.json().catch(() => ({}));
@@ -87,7 +87,7 @@ class ApiClient {
         // Handle unauthorized (expired token, etc.)
         if (typeof window !== "undefined") {
           localStorage.removeItem("token");
-          window.location.href = "/login";
+          window.location.href = "/auth";
         }
       }
       const error = await response.json().catch(() => ({}));
@@ -109,7 +109,7 @@ class ApiClient {
         // Handle unauthorized (expired token, etc.)
         if (typeof window !== "undefined") {
           localStorage.removeItem("token");
-          window.location.href = "/login";
+          window.location.href = "/auth";
         }
       }
       const error = await response.json().catch(() => ({}));
@@ -130,7 +130,7 @@ class ApiClient {
         // Handle unauthorized (expired token, etc.)
         if (typeof window !== "undefined") {
           localStorage.removeItem("token");
-          window.location.href = "/login";
+          window.location.href = "/auth";
         }
       }
       const error = await response.json().catch(() => ({}));
@@ -142,7 +142,7 @@ class ApiClient {
 
   // Authentication methods
   async login(email: string, password: string): Promise<any> {
-    return this.post("/api/login_check", { email, password }, false);
+    return this.post("/api/auth_check", { email, password }, false);
   }
 
   // Add this method to your ApiClient class
@@ -160,7 +160,7 @@ class ApiClient {
       if (response.status === 401) {
         if (typeof window !== "undefined") {
           localStorage.removeItem("token");
-          window.location.href = "/login";
+          window.location.href = "/auth";
         }
       }
       const error = await response.json().catch(() => ({}));

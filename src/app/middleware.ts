@@ -6,7 +6,7 @@ import type { NextRequest } from "next/server";
 const protectedPaths = ["/profile", "/settings", "/transactions"];
 
 // Paths that should redirect to home if user is already logged in
-const authPaths = ["/login", "/register"];
+const authPaths = ["/auth"];
 
 export function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
@@ -24,7 +24,7 @@ export function middleware(request: NextRequest) {
 
   // If it's a protected path and no token exists
   if (isProtectedPath && !token) {
-    const url = new URL("/login", request.url);
+    const url = new URL("/auth", request.url);
     url.searchParams.set("redirect", pathname);
     return NextResponse.redirect(url);
   }

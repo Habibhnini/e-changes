@@ -1,72 +1,36 @@
 // app/api/mercure/proxy/route.ts
-import { NextRequest, NextResponse } from "next/server";
+export const runtime = "edge"; // optional for prod, remove for local if streaming issues
+
+import { NextRequest } from "next/server";
 
 export async function GET(request: NextRequest) {
-  // Extract the query parameters
-  const url = new URL(request.url);
-  const topic = url.searchParams.get("topic");
-  const authorization = url.searchParams.get("authorization");
+  const { searchParams } = new URL(request.url);
+  const topic = searchParams.get("topic")!;
+  const token = searchParams.get("authorization")!;
 
-  console.log(`MERCURE PROXY: Called with topic: ${topic}`);
+  const hub = new URL(process.env.NEXT_PUBLIC_MERCURE_HUB_URL!);
+  hub.pathname = "/.well-known/mercure";
+  hub.searchParams.append("topic", topic);
 
-  // Create the target URL
-  const targetUrl = new URL(
-    "/.well-known/mercure",
-    process.env.NEXT_PUBLIC_MERCURE_HUB_URL || "http://localhost:3001"
-  );
+  const mercureRes = await fetch(hub.toString(), {
+    headers: {
+      Accept: "text/event-stream",
+      Authorization: `Bearer ${token}`, // ← pass it here
+    },
+  });
 
-  // Add topic parameter
-  if (topic) {
-    targetUrl.searchParams.append("topic", topic);
-  }
-
-  // Add authorization if provided
-  if (authorization) {
-    targetUrl.searchParams.append("authorization", authorization);
-  }
-
-  console.log(`MERCURE PROXY: Connecting to hub: ${targetUrl.toString()}`);
-
-  try {
-    // Make the fetch request to Mercure
-    const response = await fetch(targetUrl.toString(), {
-      headers: {
-        Accept: "text/event-stream",
-      },
-      duplex: "half", // Required for streaming responses
-    } as RequestInit);
-
-    if (!response.ok) {
-      console.error(
-        `MERCURE PROXY: Error from Mercure hub: ${response.status} ${response.statusText}`
-      );
-      return NextResponse.json(
-        { error: `Mercure hub returned ${response.status}` },
-        { status: response.status }
-      );
-    }
-
-    console.log(
-      `MERCURE PROXY: Connection successful, status: ${response.status}`
-    );
-
-    // Create a new response with the appropriate headers for SSE
-    const newResponse = new NextResponse(response.body, {
-      status: response.status,
-      headers: {
-        "Content-Type": "text/event-stream",
-        "Cache-Control": "no-cache, no-transform",
-        Connection: "keep-alive",
-        "X-Accel-Buffering": "no",
-      },
+  if (!mercureRes.ok) {
+    return new Response(`Mercure hub error ${mercureRes.status}`, {
+      status: mercureRes.status,
     });
-
-    return newResponse;
-  } catch (error) {
-    console.error("MERCURE PROXY: Error connecting to Mercure hub:", error);
-    return NextResponse.json(
-      { error: "Failed to connect to Mercure hub" },
-      { status: 500 }
-    );
   }
+
+  return new Response(mercureRes.body, {
+    headers: {
+      "Content-Type": "text/event-stream",
+      "Cache-Control": "no-cache, no-transform",
+      Connection: "keep-alive",
+      "X-Accel-Buffering": "no",
+    },
+  });
 }

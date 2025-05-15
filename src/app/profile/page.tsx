@@ -6,7 +6,8 @@ import { IoLocationOutline } from "react-icons/io5";
 import { useAuth } from "../contexts/AuthContext";
 import ServiceModal from "../components/ServiceModal";
 import { Service } from "../api/services/routes";
-
+import { loadStripe } from "@stripe/stripe-js";
+import StripeSubscribeButton from "../components/StripeSubscibeButton";
 export default function ProfilePage() {
   const [activeTab, setActiveTab] = useState("donnees");
   const [showModal, setShowModal] = useState(false);
@@ -18,7 +19,7 @@ export default function ProfilePage() {
   const [error, setError] = useState<string | null>(null);
   const { logout, user } = useAuth();
   // Mock user data
-  console.log(user?.userInfo?.photoIdPath);
+
   // Mock subscription data
   const subscriptionData = {
     price: "20€",
@@ -85,9 +86,11 @@ export default function ProfilePage() {
 
       if (servicesData && servicesData.services) {
         const services = servicesData.services.filter(
-          (s) => s.type === "service"
+          (s: { type: string }) => s.type === "service"
         );
-        const biens = servicesData.services.filter((s) => s.type === "bien");
+        const biens = servicesData.services.filter(
+          (s: { type: string }) => s.type === "bien"
+        );
 
         setUserServices(services);
         setUserBiens(biens);
@@ -568,9 +571,11 @@ export default function ProfilePage() {
                   Résumé pour Abonnement annuel e-change
                 </p>
               </div>
-              <button className="bg-gray-200 text-gray-700 w-full py-2 rounded-xl mb-6 hover:bg-gray-300 cursor-pointer">
-                Désactiver récurrence
-              </button>
+              <StripeSubscribeButton
+                buttonText="Souscrire maintenant"
+                className="bg-gray-200 text-gray-700 w-full py-2 rounded-xl mb-6 hover:bg-gray-300 cursor-pointer"
+              />
+
               <div className="text-center">
                 <p className="text-sm text-gray-700 font-medium mb-1">
                   ÉTAT DE L'ABONNEMENT

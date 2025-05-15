@@ -2,7 +2,7 @@
 
 import React, { createContext, useContext, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-
+import { loadStripe } from "@stripe/stripe-js";
 interface User {
   userInfo: any;
   id: number;
@@ -207,13 +207,37 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           region: registrationData.region,
         });
       }
-
+      await startStripeCheckout(registrationData.email);
       return data;
     } catch (error) {
       console.error("Registration error:", error);
       throw error;
     } finally {
       setLoading(false);
+    }
+  };
+
+  const startStripeCheckout = async (email: string) => {
+    const token = localStorage.getItem("token");
+
+    const res = await fetch("/api/stripe/register-subscribe", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify({ email }),
+    });
+
+    const data = await res.json();
+
+    if (!res.ok) {
+      throw new Error(data.error || "Stripe subscription failed");
+    }
+
+    const stripe = await loadStripe(process.env.NEXT_PUBLIC_STRIPE_PUBLIC_KEY!);
+    if (stripe) {
+      await stripe.redirectToCheckout({ sessionId: data.sessionId });
     }
   };
 
