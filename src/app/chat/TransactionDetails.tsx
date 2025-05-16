@@ -40,6 +40,8 @@ const TransactionDetails: React.FC<TransactionDetailsProps> = ({
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<boolean>(false);
   const isSeller = currentUser?.id === service.vendor.id;
+  const isFinalized = transaction.status === "completed";
+
   const statusColorMap: Record<string, string> = {
     created: "bg-gray-200 text-gray-800",
     negotiation: "bg-yellow-100 text-yellow-700",
@@ -266,19 +268,38 @@ const TransactionDetails: React.FC<TransactionDetailsProps> = ({
             isNarrowDesktop ? "" : "justify-center"
           }`}
         >
-          <button className="px-4 py-2 border border-red-500 text-red-500 rounded-lg text-sm hover:bg-red-50 cursor-pointer">
+          <button
+            disabled={isFinalized}
+            className={`px-4 py-2 border text-sm rounded-lg ${
+              isFinalized
+                ? "border-red-500 text-red-500 hover:bg-red-50 cursor-pointer"
+                : "border-red-500 text-red-500 hover:bg-red-50 cursor-pointer"
+            }`}
+          >
             Signaler
           </button>
+
           <button
+            disabled={isFinalized}
             onClick={handleCancel}
-            className="px-4 py-2 bg-gray-200 text-gray-700 rounded-lg text-sm hover:bg-gray-300 cursor-pointer"
+            className={`px-4 py-2 text-sm rounded-lg ${
+              isFinalized
+                ? "bg-gray-300 text-gray-400 cursor-not-allowed"
+                : "bg-gray-200 text-gray-700 hover:bg-gray-300 cursor-pointer"
+            }`}
           >
             Annuler
           </button>
+
           {!hasValidated && transaction.status !== "validation" && (
             <button
+              disabled={isFinalized}
               onClick={handleValidate}
-              className="px-4 py-2 bg-[#38AC8E] text-white rounded-lg text-sm hover:bg-teal-600 cursor-pointer"
+              className={`px-4 py-2 text-sm rounded-lg ${
+                isFinalized
+                  ? "bg-gray-300 text-gray-400 cursor-not-allowed"
+                  : "bg-[#38AC8E] text-white hover:bg-teal-600 cursor-pointer"
+              }`}
             >
               Valider
             </button>

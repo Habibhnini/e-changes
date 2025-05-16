@@ -1,6 +1,12 @@
 "use client";
 
-import React, { createContext, useContext, useEffect, useState } from "react";
+import React, {
+  createContext,
+  useContext,
+  useEffect,
+  useRef,
+  useState,
+} from "react";
 import { useRouter } from "next/navigation";
 import { loadStripe } from "@stripe/stripe-js";
 interface User {
@@ -52,6 +58,7 @@ interface AuthContextType {
     idCardBack: File
   ) => Promise<void>;
   completeSubscription: (billingDetails: BillingDetails) => Promise<void>;
+  updateUserEnergyBalance: (balance: number) => void;
 }
 
 interface BillingDetails {
@@ -70,28 +77,82 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [token, setToken] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const router = useRouter();
+  const eventSourceRef = useRef<EventSource | null>(null);
 
-  // Check if we have a token on initial load
-  useEffect(() => {
-    const initAuth = async () => {
-      const storedToken = localStorage.getItem("token");
-      if (storedToken) {
-        try {
-          setToken(storedToken);
-          await fetchUserProfile(storedToken);
-        } catch (error) {
-          console.error("Failed to authenticate with stored token:", error);
-          localStorage.removeItem("token");
-          setToken(null);
-        }
+  const authenticateWalletMercure = async (userId: number) => {
+    try {
+      const url = `http://localhost:8000/api/mercure/auth?topic=/user/${userId}/wallet`;
+      const res = await fetch(url, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+
+      if (!res.ok) {
+        throw new Error("Wallet Mercure auth failed");
       }
-      setLoading(false);
+
+      const data = await res.json();
+      return data.token;
+    } catch (err) {
+      console.error("Wallet Mercure auth error:", err);
+      return null;
+    }
+  };
+
+  useEffect(() => {
+    if (!user?.id || !token) return;
+
+    let isMounted = true;
+
+    const connect = async () => {
+      const mercureToken = await authenticateWalletMercure(user.id);
+      if (!mercureToken || !isMounted) return;
+
+      const url = new URL("/api/mercure/proxy", window.location.origin);
+      url.searchParams.append("topic", `/user/${user.id}/wallet`);
+      url.searchParams.append("authorization", mercureToken);
+
+      const eventSource = new EventSource(url.toString());
+
+      eventSource.onopen = () => {};
+
+      eventSource.onmessage = (event) => {
+        try {
+          const data = JSON.parse(event.data);
+          if (typeof data.balance === "number") {
+            updateUserEnergyBalance(data.balance);
+          }
+        } catch (err) {}
+      };
+
+      eventSource.onerror = (err) => {};
+
+      eventSourceRef.current = eventSource;
     };
 
-    initAuth();
-  }, []);
+    connect();
 
-  // Fetch user profile using the token
+    return () => {
+      isMounted = false;
+      eventSourceRef.current?.close();
+      eventSourceRef.current = null;
+    };
+  }, [user?.id, token]);
+
+  const updateUserEnergyBalance = (newBalance: number) => {
+    setUser((prevUser) =>
+      prevUser ? { ...prevUser, energyBalance: newBalance } : null
+    );
+
+    const cachedUser = localStorage.getItem("user");
+    if (cachedUser) {
+      const parsed = JSON.parse(cachedUser);
+      parsed.energyBalance = newBalance;
+      localStorage.setItem("user", JSON.stringify(parsed));
+    }
+  };
+
   const fetchUserProfile = async (currentToken: string) => {
     try {
       const response = await fetch("/api/me", {
@@ -331,6 +392,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         uploadIdentityDocuments,
         completeSubscription,
         isAuthenticated: !!user,
+        updateUserEnergyBalance,
       }}
     >
       {children}

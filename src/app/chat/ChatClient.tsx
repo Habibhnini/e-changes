@@ -244,7 +244,7 @@ export default function ChatPage() {
         });
 
         if (response.status === 401) {
-          router.push("/login?redirect=/chat");
+          router.push("/auth?redirect=/chat");
           return;
         }
 
@@ -282,7 +282,7 @@ export default function ChatPage() {
         );
 
         if (response.status === 401) {
-          router.push("/login?redirect=/chat");
+          router.push("/auth?redirect=/chat");
           return;
         }
 

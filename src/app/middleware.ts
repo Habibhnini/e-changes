@@ -3,7 +3,13 @@ import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 
 // Paths that require authentication
-const protectedPaths = ["/profile", "/settings", "/transactions"];
+const protectedPaths = [
+  "/profile",
+  "/settings",
+  "/transactions",
+  "/wallet",
+  "/chat",
+];
 
 // Paths that should redirect to home if user is already logged in
 const authPaths = ["/auth"];
