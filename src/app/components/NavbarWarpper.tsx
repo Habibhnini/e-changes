@@ -5,8 +5,8 @@ import { useAuth } from "../contexts/AuthContext";
 import Navbar from "./Navbar";
 
 export default function NavbarWrapper() {
-  const { user, isAuthenticated } = useAuth();
-
+  const { user, isAuthenticated, loading } = useAuth();
+  if (loading) return null;
   // Determine energy points from user if available
   const points = user?.energyBalance || 0;
 

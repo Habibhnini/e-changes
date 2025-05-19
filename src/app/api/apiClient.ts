@@ -14,7 +14,8 @@ interface ServiceDetail {
   vendor: {
     id: number;
     email: string;
-    name: string;
+    firstName: string;
+    lastName: string;
     profileImage: string;
     rating: number;
   };
@@ -218,7 +219,8 @@ class ApiClient {
       vendor: {
         id: rawData.vendor?.id ? Number(rawData.vendor.id) : 0,
         email: rawData.vendor?.email || "",
-        name: rawData.vendor?.name || "",
+        firstName: rawData.vendor?.firstName || "",
+        lastName: rawData.vendor?.lastName || "",
         profileImage: rawData.vendor?.profileImage || "",
         rating:
           typeof rawData.vendor?.rating === "number"

@@ -237,6 +237,8 @@ export default function ChatPage() {
 
   // Load conversation list
   useEffect(() => {
+    if (!token || !currentUser) return;
+
     const fetchConversations = async () => {
       try {
         const response = await fetch("/api/messages/conversations", {
@@ -248,12 +250,9 @@ export default function ChatPage() {
           return;
         }
 
-        if (!response.ok) throw new Error("Failed to load conversations");
-
         const data = await response.json();
         setConversations(data.conversations);
 
-        // If we have conversations but no selected transaction, select the first one
         if (data.conversations.length > 0 && !selectedTransactionId) {
           router.push(`/chat?transaction=${data.conversations[0].id}`, {
             scroll: false,
@@ -265,11 +264,11 @@ export default function ChatPage() {
     };
 
     fetchConversations();
-  }, [selectedTransactionId, router]);
+  }, [token, currentUser, selectedTransactionId, router]);
 
   // Load messages for selected transaction
   useEffect(() => {
-    if (!selectedTransactionId) return;
+    if (!selectedTransactionId || !token || !currentUser) return;
 
     const fetchMessages = async () => {
       setLoading(true);
@@ -331,7 +330,7 @@ export default function ChatPage() {
     };
 
     fetchMessages();
-  }, [selectedTransactionId, isMobile, mobileView, router]);
+  }, [token, currentUser, selectedTransactionId, isMobile, mobileView, router]);
 
   // Scroll to bottom when messages change
   useEffect(() => {
@@ -414,7 +413,7 @@ export default function ChatPage() {
           setError("Your session has expired. Please log in again.");
           setTimeout(() => {
             router.push(
-              `/login?redirect=/chat?transaction=${selectedTransactionId}`
+              `/auth?redirect=/chat?transaction=${selectedTransactionId}`
             );
           }, 2000);
           return;
@@ -572,7 +571,7 @@ export default function ChatPage() {
   );
 
   // Loading state
-  if (loading && !service && selectedTransactionId) {
+  if (loading) {
     return (
       <div className="flex justify-center items-center h-screen">
         <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-[#38AC8E]"></div>
@@ -583,9 +582,9 @@ export default function ChatPage() {
   // Render conversations list
   const renderConversationsList = () => (
     <div
-      className={`bg-white overflow-y-auto ${
+      className={`bg-white ${
         isMobile ? "w-full" : isTablet ? "w-1/3" : "w-1/4"
-      }`}
+      } h-screen overflow-y-auto`}
     >
       <div className="p-4 border-gray-200">
         <div className="relative">
@@ -976,7 +975,6 @@ export default function ChatPage() {
     // Mobile view
     return (
       <div className="h-screen w-full">
-        {renderConnectionStatus()}
         {error && (
           <div className="bg-red-100 border-l-4 border-red-500 text-red-700 p-4 mb-4">
             <p>{error}</p>
@@ -991,7 +989,6 @@ export default function ChatPage() {
     // Tablet view
     return (
       <div className="flex h-full w-full">
-        {renderConnectionStatus()}
         {error && (
           <div className="absolute top-0 left-0 right-0 bg-red-100 border-l-4 border-red-500 text-red-700 p-4">
             <p>{error}</p>
@@ -1006,8 +1003,6 @@ export default function ChatPage() {
     // Desktop view
     return (
       <div className="flex h-full max-w-[82%] mx-auto relative">
-        {renderConnectionStatus()}
-
         {/* Left sidebar - Chat list */}
         {renderConversationsList()}
 

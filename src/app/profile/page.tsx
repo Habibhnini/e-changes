@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import Image from "next/image";
 import { IoLocationOutline } from "react-icons/io5";
 import { useAuth } from "../contexts/AuthContext";
@@ -18,8 +18,78 @@ export default function ProfilePage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const { logout, user } = useAuth();
-  // Mock user data
+  const [isEditing, setIsEditing] = useState(false);
+  const [password, setPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [imagePreview, setImagePreview] = useState<string | null>(null);
+  const imageInputRef = useRef<HTMLInputElement>(null);
+  const [notification, setNotification] = useState({
+    show: false,
+    message: "",
+    type: "",
+  });
 
+  // Handle showing notification popup
+  const showNotification = (message: string, type: string) => {
+    setNotification({
+      show: true,
+      message,
+      type,
+    });
+
+    // Auto hide notification after 3 seconds
+    setTimeout(() => {
+      setNotification((prev) => ({ ...prev, show: false }));
+    }, 3000);
+  };
+
+  // Add this function for canceling edits
+  const handleCancelEdit = () => {
+    setIsEditing(false);
+    setPassword("");
+    setConfirmPassword("");
+    setImagePreview(null);
+  };
+
+  // Replace your form submission with this improved version
+  const handleSubmit = async (e: {
+    preventDefault: () => void;
+    currentTarget: HTMLFormElement | undefined;
+  }) => {
+    e.preventDefault();
+
+    if (password && password !== confirmPassword) {
+      showNotification("Les mots de passe ne correspondent pas", "error");
+      return;
+    }
+
+    const formData = new FormData(e.currentTarget);
+
+    try {
+      const response = await fetch(
+        `${process.env.NEXT_PUBLIC_API_URL}/api/user/update`,
+        {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${localStorage.getItem("token")}`,
+          },
+          body: formData,
+        }
+      );
+
+      const result = await response.json();
+      if (!response.ok) {
+        showNotification(result.error || "Erreur serveur", "error");
+      } else {
+        showNotification("Profil mis à jour avec succès", "success");
+        setIsEditing(false);
+        setPassword("");
+        setConfirmPassword("");
+      }
+    } catch (error) {
+      showNotification("Une erreur est survenue", "error");
+    }
+  };
   // Mock subscription data
   const subscriptionData = {
     price: "20€",
@@ -379,14 +449,94 @@ export default function ProfilePage() {
           onCreated={handleCreated}
         />
       )}
-
+      {notification.show && (
+        <div
+          className={`fixed top-6 right-6 p-4 rounded-lg shadow-lg max-w-md z-50 transition-all transform ${
+            notification.show
+              ? "translate-y-0 opacity-100"
+              : "translate-y-2 opacity-0"
+          } ${
+            notification.type === "success"
+              ? "bg-green-50 border-l-4 border-green-500"
+              : "bg-red-50 border-l-4 border-red-500"
+          }`}
+        >
+          <div className="flex">
+            <div className="flex-shrink-0">
+              {notification.type === "success" ? (
+                <svg
+                  className="h-5 w-5 text-green-500"
+                  viewBox="0 0 20 20"
+                  fill="currentColor"
+                >
+                  <path
+                    fillRule="evenodd"
+                    d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z"
+                    clipRule="evenodd"
+                  />
+                </svg>
+              ) : (
+                <svg
+                  className="h-5 w-5 text-red-500"
+                  viewBox="0 0 20 20"
+                  fill="currentColor"
+                >
+                  <path
+                    fillRule="evenodd"
+                    d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z"
+                    clipRule="evenodd"
+                  />
+                </svg>
+              )}
+            </div>
+            <div className="ml-3">
+              <p
+                className={`text-sm font-medium ${
+                  notification.type === "success"
+                    ? "text-green-800"
+                    : "text-red-800"
+                }`}
+              >
+                {notification.message}
+              </p>
+            </div>
+            <div className="ml-auto pl-3">
+              <div className="-mx-1.5 -my-1.5">
+                <button
+                  onClick={() =>
+                    setNotification((prev) => ({ ...prev, show: false }))
+                  }
+                  className={`inline-flex rounded-md p-1.5 ${
+                    notification.type === "success"
+                      ? "text-green-500 hover:bg-green-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500"
+                      : "text-red-500 hover:bg-red-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500"
+                  }`}
+                >
+                  <span className="sr-only">Dismiss</span>
+                  <svg
+                    className="h-5 w-5"
+                    viewBox="0 0 20 20"
+                    fill="currentColor"
+                  >
+                    <path
+                      fillRule="evenodd"
+                      d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z"
+                      clipRule="evenodd"
+                    />
+                  </svg>
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
       {/* Données Personnelles Section */}
       {activeTab === "donnees" && (
         <div className="space-y-6">
-          {/* Referral Banner */}
-          <div className="mb-6 border-[0.5px] rounded-2xl border-gray-200 ">
+          {/* Referral Banner - Keep as is */}
+          <div className="mb-6 border-[0.5px] rounded-2xl border-gray-200">
             {/* Yellow Banner */}
-            <div className="bg-yellow-300 rounded-2xl  overflow-hidden">
+            <div className="bg-yellow-300 rounded-2xl overflow-hidden">
               <div className="flex justify-between items-center relative">
                 <div className="p-12 md:pl-36">
                   <h2 className="text-3xl font-bold">
@@ -415,12 +565,6 @@ export default function ProfilePage() {
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <p className="text-gray-600 text-sm mb-1">
-                    Nombre de parrainage actuel
-                  </p>
-                  <p>{user?.referrals}</p>
-                </div>
-                <div>
-                  <p className="text-gray-600 text-sm mb-1">
                     Votre code de parrainage
                   </p>
                   <p>{user?.referralCode}</p>
@@ -429,116 +573,217 @@ export default function ProfilePage() {
             </div>
           </div>
 
-          {/* Profile Image */}
-          <div>
-            <p className="text-gray-600 text-sm mb-2">Image de profil</p>
-            <div className="flex items-center gap-4">
-              <Image
-                src={
-                  user?.userInfo?.photoIdPath
-                    ? `${process.env.NEXT_PUBLIC_API_URL}${user.userInfo.photoIdPath}`
-                    : "/placeholder.png"
-                }
-                alt="Profile"
-                width={64}
-                height={64}
-                className="rounded-full object-cover"
-              />
-              <button className="bg-[#38AC8E] text-white px-4 py-1 h-12 rounded-xl text-sm cursor-pointer hover:bg-teal-600">
-                Changer
-              </button>
+          {/* User Profile Section with View/Edit Toggle */}
+          <div className="bg-white rounded-xl p-6 border border-gray-200">
+            <div className="flex justify-between items-center mb-6">
+              <h2 className="text-xl font-medium">Mon Profil</h2>
+              {!isEditing && (
+                <button
+                  type="button"
+                  className="bg-[#38AC8E] text-white px-4 py-2 rounded-lg hover:bg-teal-600 transition-colors"
+                  onClick={() => setIsEditing(true)}
+                >
+                  Modifier mon profil
+                </button>
+              )}
             </div>
+
+            {/* Profile Image - Always Visible */}
+            <div className="mb-6">
+              <p className="text-gray-600 text-sm mb-2">Image de profil</p>
+              <div className="flex items-center gap-4">
+                <div className="w-16 h-16 relative">
+                  <Image
+                    src={
+                      imagePreview
+                        ? imagePreview
+                        : user?.userInfo?.photoIdPath
+                        ? `${process.env.NEXT_PUBLIC_API_URL}${user.userInfo.photoIdPath}`
+                        : "/placeholder.png"
+                    }
+                    alt="Profile"
+                    fill
+                    className="rounded-full object-cover"
+                  />
+                </div>
+                {isEditing && (
+                  <>
+                    <button
+                      type="button"
+                      onClick={() => imageInputRef.current?.click()}
+                      className="bg-[#38AC8E] text-white px-4 py-1 h-10 rounded-lg text-sm cursor-pointer hover:bg-teal-600 transition-colors"
+                    >
+                      Changer
+                    </button>
+                    <input
+                      type="file"
+                      name="photoId"
+                      ref={imageInputRef}
+                      className="hidden"
+                      accept="image/*"
+                      onChange={(e) => {
+                        const file = e.target.files?.[0];
+                        if (file) {
+                          const reader = new FileReader();
+                          reader.onloadend = () => {
+                            setImagePreview(reader.result as string);
+                          };
+                          reader.readAsDataURL(file);
+                        }
+                      }}
+                    />
+                  </>
+                )}
+              </div>
+            </div>
+
+            {/* View Mode */}
+            {!isEditing ? (
+              <div className="space-y-6">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div className="bg-gray-50 p-4 rounded-lg">
+                    <h3 className="text-sm font-medium text-gray-500 mb-1">
+                      E-mail
+                    </h3>
+                    <p className="text-gray-900">{user?.email}</p>
+                  </div>
+                  <div className="bg-gray-50 p-4 rounded-lg">
+                    <h3 className="text-sm font-medium text-gray-500 mb-1">
+                      Ville
+                    </h3>
+                    <p className="text-gray-900">
+                      {user?.userInfo?.city || "-"}
+                    </p>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div className="bg-gray-50 p-4 rounded-lg">
+                    <h3 className="text-sm font-medium text-gray-500 mb-1">
+                      Prénom
+                    </h3>
+                    <p className="text-gray-900">{user?.firstName}</p>
+                  </div>
+                  <div className="bg-gray-50 p-4 rounded-lg">
+                    <h3 className="text-sm font-medium text-gray-500 mb-1">
+                      Nom
+                    </h3>
+                    <p className="text-gray-900">{user?.lastName}</p>
+                  </div>
+                </div>
+              </div>
+            ) : (
+              /* Edit Mode */
+              <form className="space-y-6" onSubmit={handleSubmit}>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div>
+                    <label className="text-gray-600 text-sm mb-1 block">
+                      E-mail
+                    </label>
+                    <input
+                      name="email"
+                      defaultValue={user?.email}
+                      className="w-full border border-gray-300 rounded-lg p-2"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-gray-600 text-sm mb-1 block">
+                      Ville
+                    </label>
+                    <input
+                      name="city"
+                      defaultValue={user?.userInfo?.city}
+                      className="w-full border border-gray-300 rounded-lg p-2"
+                    />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div>
+                    <label className="text-gray-600 text-sm mb-1 block">
+                      Prénom
+                    </label>
+                    <input
+                      name="firstName"
+                      defaultValue={user?.firstName}
+                      className="w-full border border-gray-300 rounded-lg p-2"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-gray-600 text-sm mb-1 block">
+                      Nom
+                    </label>
+                    <input
+                      name="lastName"
+                      defaultValue={user?.lastName}
+                      className="w-full border border-gray-300 rounded-lg p-2"
+                    />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div>
+                    <label className="text-gray-600 text-sm mb-1 block">
+                      Nouveau mot de passe
+                    </label>
+                    <input
+                      type="password"
+                      name="password"
+                      value={password}
+                      onChange={(e) => setPassword(e.target.value)}
+                      className={`w-full border rounded-lg p-2 transition-colors duration-150 ${
+                        password === "" && confirmPassword === ""
+                          ? "border-gray-300"
+                          : password === confirmPassword
+                          ? "border-green-500"
+                          : "border-red-500"
+                      }`}
+                    />
+                  </div>
+                  <div>
+                    <label className="text-gray-600 text-sm mb-1 block">
+                      Confirmer le mot de passe
+                    </label>
+                    <input
+                      type="password"
+                      value={confirmPassword}
+                      onChange={(e) => setConfirmPassword(e.target.value)}
+                      className={`w-full border rounded-lg p-2 transition-colors duration-150 ${
+                        password === "" && confirmPassword === ""
+                          ? "border-gray-300"
+                          : password === confirmPassword
+                          ? "border-green-500"
+                          : "border-red-500"
+                      }`}
+                    />
+                  </div>
+                  {confirmPassword && password !== confirmPassword && (
+                    <p className="text-sm text-red-600 mt-1 col-span-2">
+                      Les mots de passe ne correspondent pas
+                    </p>
+                  )}
+                </div>
+
+                <div className="flex justify-between pt-4">
+                  <button
+                    type="button"
+                    onClick={handleCancelEdit}
+                    className="px-6 py-2 rounded-lg border border-gray-300 text-gray-700 hover:bg-gray-50 transition-colors"
+                  >
+                    Annuler
+                  </button>
+                  <button
+                    type="submit"
+                    className="px-6 py-2 rounded-lg text-white bg-[#38AC8E] hover:bg-teal-600 transition-colors"
+                  >
+                    Sauvegarder
+                  </button>
+                </div>
+              </form>
+            )}
           </div>
-
-          {/* User Form */}
-          <form className="space-y-6">
-            <div>
-              <label className="block text-gray-600 text-sm mb-2">E-mail</label>
-              <input
-                type="email"
-                defaultValue={user?.email}
-                className="w-full border border-gray-300 rounded-xl p-2"
-              />
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <label className="block text-gray-600 text-sm mb-2">
-                  Ancien mot de passe
-                </label>
-                <input
-                  type="password"
-                  defaultValue="••••••••••"
-                  className="w-full border border-gray-300 rounded-xl p-2"
-                />
-              </div>
-              <div>
-                <label className="block text-gray-600 text-sm mb-2">
-                  Nouveau mot de passe
-                </label>
-                <input
-                  type="password"
-                  defaultValue="••••••••••••"
-                  className="w-full border border-gray-300 rounded-xl p-2"
-                />
-              </div>
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <label className="block text-gray-600 text-sm mb-2">
-                  Prénom
-                </label>
-                <input
-                  type="text"
-                  defaultValue={user?.firstName}
-                  className="w-full border border-gray-300 rounded-xl p-2"
-                />
-              </div>
-              <div>
-                <label className="block text-gray-600 text-sm mb-2">
-                  Nom (Uniquement la première lettre est affichée)
-                </label>
-                <input
-                  type="text"
-                  defaultValue={user?.lastName}
-                  className="w-full border border-gray-300 rounded-xl p-2"
-                />
-              </div>
-            </div>
-
-            <div>
-              <label className="block text-gray-600 text-sm mb-2">Ville</label>
-              <input
-                type="text"
-                defaultValue={user?.userInfo?.city}
-                placeholder="Écrivez ici..."
-                className="w-full border border-gray-300 rounded-xl p-2"
-              />
-            </div>
-
-            <div>
-              <label className="block text-gray-600 text-sm mb-2">
-                Présentation (maximum 800 caractères)
-              </label>
-              <textarea
-                placeholder="Écrivez ici..."
-                className="w-full border border-gray-300 rounded-xl p-2 h-32"
-              ></textarea>
-            </div>
-
-            <div className="flex justify-end">
-              <button
-                type="submit"
-                className="bg-emerald-500 text-white px-6 py-2 rounded-md"
-              >
-                Sauvegarder
-              </button>
-            </div>
-          </form>
         </div>
       )}
-
       {/* Adhésion Section */}
       {activeTab === "adhesion" && (
         <div className="space-y-6">

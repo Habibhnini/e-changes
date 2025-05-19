@@ -59,6 +59,9 @@ interface AuthContextType {
   ) => Promise<void>;
   completeSubscription: (billingDetails: BillingDetails) => Promise<void>;
   updateUserEnergyBalance: (balance: number) => void;
+  notifications: any;
+  unreadCount: number;
+  setUnreadCount?: (value: number) => void;
 }
 
 interface BillingDetails {
@@ -78,6 +81,101 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [loading, setLoading] = useState(true);
   const router = useRouter();
   const eventSourceRef = useRef<EventSource | null>(null);
+  const [notifications, setNotifications] = useState<Notification[]>([]);
+  const [unreadCount, setUnreadCount] = useState<number>(0);
+  useEffect(() => {
+    const storedToken = localStorage.getItem("token");
+    const storedUser = localStorage.getItem("user");
+
+    if (storedToken) {
+      setToken(storedToken);
+    }
+    if (storedUser) {
+      setUser(JSON.parse(storedUser));
+    }
+
+    setLoading(false);
+  }, []);
+  const fetchUserProfile = async (currentToken: string) => {
+    try {
+      const response = await fetch("/api/me", {
+        headers: {
+          Authorization: `Bearer ${currentToken}`,
+        },
+      });
+
+      if (!response.ok) {
+        throw new Error("Failed to fetch user profile");
+      }
+
+      const userData = await response.json();
+      setUser(userData);
+      localStorage.setItem("user", JSON.stringify(userData));
+      return userData;
+    } catch (error) {
+      console.error("Error fetching user profile:", error);
+      setUser(null);
+      setToken(null);
+      localStorage.removeItem("token");
+      throw error;
+    }
+  };
+
+  const authenticateNotificationMercure = async (userId: number) => {
+    try {
+      const res = await fetch(
+        `http://localhost:8000/api/mercure/auth?topic=/user/${userId}/notifications`,
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      );
+
+      if (!res.ok) throw new Error("Notification Mercure auth failed");
+
+      const data = await res.json();
+      return data.token;
+    } catch (err) {
+      console.error("Notification Mercure auth error:", err);
+      return null;
+    }
+  };
+  useEffect(() => {
+    if (!user?.id || !token) return;
+
+    let eventSource: EventSource;
+
+    const connectNotifications = async () => {
+      const mercureToken = await authenticateNotificationMercure(user.id);
+      if (!mercureToken) return;
+
+      const url = new URL("/api/mercure/proxy", window.location.origin);
+      url.searchParams.append("topic", `/user/${user.id}/notifications`);
+      url.searchParams.append("authorization", mercureToken);
+
+      eventSource = new EventSource(url.toString());
+      eventSource.onmessage = (event) => {
+        try {
+          const notif = JSON.parse(event.data);
+          setNotifications((prev) => [notif, ...prev]);
+          setUnreadCount((prev) => prev + 1);
+        } catch (err) {
+          console.error("Error parsing notification:", err);
+        }
+      };
+
+      eventSource.onerror = (err) => {
+        console.error("Notification Mercure error", err);
+      };
+    };
+
+    connectNotifications();
+
+    return () => {
+      if (eventSource) eventSource.close();
+    };
+  }, [user?.id, token]);
 
   const authenticateWalletMercure = async (userId: number) => {
     try {
@@ -150,30 +248,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       const parsed = JSON.parse(cachedUser);
       parsed.energyBalance = newBalance;
       localStorage.setItem("user", JSON.stringify(parsed));
-    }
-  };
-
-  const fetchUserProfile = async (currentToken: string) => {
-    try {
-      const response = await fetch("/api/me", {
-        headers: {
-          Authorization: `Bearer ${currentToken}`,
-        },
-      });
-
-      if (!response.ok) {
-        throw new Error("Failed to fetch user profile");
-      }
-
-      const userData = await response.json();
-      setUser(userData);
-      return userData;
-    } catch (error) {
-      console.error("Error fetching user profile:", error);
-      setUser(null);
-      setToken(null);
-      localStorage.removeItem("token");
-      throw error;
     }
   };
 
@@ -393,6 +467,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         completeSubscription,
         isAuthenticated: !!user,
         updateUserEnergyBalance,
+        notifications,
+        unreadCount,
+        setUnreadCount,
       }}
     >
       {children}

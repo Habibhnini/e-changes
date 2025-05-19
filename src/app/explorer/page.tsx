@@ -2,8 +2,6 @@
 "use client";
 
 import React, { useState, useEffect, useRef } from "react";
-import Image from "next/image";
-import Link from "next/link";
 import ServiceCard from "./ServiceCard"; // Import the ServiceCard component
 
 // Define types for our data structure
@@ -18,14 +16,18 @@ interface Service {
   location: string;
   createdAt: string;
 }
-
+interface Category {
+  id: number;
+  name: string;
+}
 export default function ExplorerPage() {
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedService, setSelectedService] = useState("");
   const [areaFilter, setAreaFilter] = useState("");
   const [selectedCategory, setSelectedCategory] = useState("");
   const [showPopulaireDropdown, setShowPopulaireDropdown] = useState(false);
-  const [selectedPopulaire, setSelectedPopulaire] = useState("Populaire");
+  const [selectedSort, setSelectedSort] = useState<string>(""); // store "price_desc"
+
   const [services, setServices] = useState<Service[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -33,29 +35,23 @@ export default function ExplorerPage() {
   const [isMobile, setIsMobile] = useState(false);
   const searchTimeout = useRef<NodeJS.Timeout | null>(null);
   // Service categories
-  const serviceCategories = ["Service1", "Service2", "Service3", "Service4"];
-
+  const serviceTypes = ["service", "bien"];
+  const [categories, setCategories] = useState<Category[]>([]);
+  const [showCategoryDropdown, setShowCategoryDropdown] = useState(false);
   // API URL - internal Next.js API route
   const API_URL = "/api/services";
-
-  // Mock data as fallback
-  const mockServices: Service[] = Array.from({ length: 16 }, (_, i) => ({
-    id: i + 1,
-    title: `Service ${i + 1}`,
-    description: `Description for service ${
-      i + 1
-    }. This is a placeholder text that describes what this service offers to customers.`,
-    category: `Service${Math.floor(i / 4) + 1}`,
-    imageUrl: i % 3 === 0 ? "/placeholder-service.jpg" : "", // Mix of images and empty strings for testing
-    price: Math.floor(Math.random() * 100) + 10, // Random price between 10 and 109
-    rating: Math.floor(Math.random() * 3) + 3, // Random rating between 3 and 5
-    location: ["Paris", "Lyon", "Bordeaux", "Vichy", "Marseille"][
-      Math.floor(Math.random() * 5)
-    ], // Random location
-    createdAt: new Date(
-      Date.now() - Math.floor(Math.random() * 30) * 24 * 60 * 60 * 1000
-    ).toISOString(), // Random date within last 30 days
-  }));
+  const sortOptions = [
+    { label: "Prix croissant", value: "price_asc" },
+    { label: "Prix décroissant", value: "price_desc" },
+    { label: "Date récente", value: "created_at_desc" },
+    { label: "Date ancienne", value: "created_at_asc" },
+  ];
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      fetchServices();
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [areaFilter]);
 
   // Detect mobile view
   useEffect(() => {
@@ -72,7 +68,18 @@ export default function ExplorerPage() {
     // Cleanup
     return () => window.removeEventListener("resize", handleResize);
   }, []);
-
+  useEffect(() => {
+    const fetchCategories = async () => {
+      try {
+        const res = await fetch("/api/service/categories");
+        const data = await res.json();
+        if (data.success) setCategories(data.categories);
+      } catch (err) {
+        console.error("Failed to load categories", err);
+      }
+    };
+    fetchCategories();
+  }, []);
   // Add this effect to handle clicks outside of the dropdown
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
@@ -97,6 +104,7 @@ export default function ExplorerPage() {
     };
   }, []);
   // Function to fetch services from API
+
   const fetchServices = async () => {
     setLoading(true);
     setError(null);
@@ -110,13 +118,8 @@ export default function ExplorerPage() {
       if (selectedCategory) params.append("category", selectedCategory);
 
       // Sort mapping
-      if (selectedPopulaire !== "Populaire") {
-        const sortMapping: Record<string, string> = {
-          Récent: "created_at_desc",
-          "Mieux noté": "rating_desc", // You'll need to add rating to your model
-          "Prix bas": "price_asc",
-        };
-        params.append("sort", sortMapping[selectedPopulaire] || "popular");
+      if (selectedSort) {
+        params.append("sort", selectedSort);
       }
 
       const queryString = params.toString() ? `?${params.toString()}` : "";
@@ -140,17 +143,15 @@ export default function ExplorerPage() {
           imageUrl: "/placeholder-service.jpg", // You'll need to add image URLs to your API
           price: apiService.price,
           rating: 4, // You'll need to add this to your API model
-          location: "Vichy", // You'll need to add location to your model
+          location: apiService.vendor.city, // You'll need to add location to your model
           createdAt: apiService.createdAt,
         })
       );
 
       setServices(mappedServices);
     } catch (err) {
-      console.error("Failed to fetch services:", err);
       setError("Failed to load services. Using mock data instead.");
-      // Fallback to mock data
-      setServices(mockServices);
+      // Fallback to mock dat
     } finally {
       setLoading(false);
     }
@@ -182,8 +183,10 @@ export default function ExplorerPage() {
     }, 300);
 
     return () => clearTimeout(debounceTimer);
-  }, [selectedService, selectedCategory, selectedPopulaire]);
-
+  }, [selectedService, selectedCategory]);
+  useEffect(() => {
+    console.log("Selected sort:", selectedSort);
+  }, [selectedSort]);
   return (
     <div className="max-w-[1800px] mx-auto px-4 sm:px-6 lg:px-8 py-8">
       {/* Hero section with Georgia font */}
@@ -218,10 +221,11 @@ export default function ExplorerPage() {
                 value={selectedService}
                 onChange={(e) => setSelectedService(e.target.value)}
               >
-                <option value="">Services</option>
-                {serviceCategories.map((category) => (
-                  <option key={category} value={category}>
-                    {category}
+                <option value="">Type</option>
+                {serviceTypes.map((type) => (
+                  <option key={type} value={type}>
+                    {type.charAt(0).toUpperCase() + type.slice(1)}{" "}
+                    {/* Capitalize */}
                   </option>
                 ))}
               </select>
@@ -264,10 +268,11 @@ export default function ExplorerPage() {
             <input
               type="text"
               placeholder="Vichy"
-              className="bg-transparent focus:outline-none text-gray-700 w-18 text-sm"
+              className="min-w-0 w-full bg-transparent focus:outline-none text-gray-700 text-xs"
               value={areaFilter}
-              onChange={(e) => setAreaFilter(e.target.value)}
+              onChange={(e) => setAreaFilter(e.target.value)} // ✅ This updates the areaFilter
             />
+
             <svg
               xmlns="http://www.w3.org/2000/svg"
               className="h-6 w-6 text-[#38AC8E] ml-2"
@@ -310,10 +315,11 @@ export default function ExplorerPage() {
               value={selectedService}
               onChange={(e) => setSelectedService(e.target.value)}
             >
-              <option value="">Services</option>
-              {serviceCategories.map((category) => (
-                <option key={category} value={category}>
-                  {category}
+              <option value="">Type</option>
+              {serviceTypes.map((type) => (
+                <option key={type} value={type}>
+                  {type.charAt(0).toUpperCase() + type.slice(1)}{" "}
+                  {/* Capitalize */}
                 </option>
               ))}
             </select>
@@ -354,8 +360,9 @@ export default function ExplorerPage() {
             placeholder="Vichy"
             className="min-w-0 w-full bg-transparent focus:outline-none text-gray-700 text-xs"
             value={areaFilter}
-            onChange={handleSearchChange}
+            onChange={(e) => setAreaFilter(e.target.value)} // ✅ This updates the areaFilter
           />
+
           <svg
             xmlns="http://www.w3.org/2000/svg"
             className="h-6 w-6 text-[#38AC8E] ml-1 flex-shrink-0"
@@ -380,131 +387,92 @@ export default function ExplorerPage() {
       </div>
       {/* ======= DESKTOP CATEGORY FILTERS ======= */}
       <div className="hidden sm:flex justify-between mb-8 items-center">
-        <div className="flex">
-          <div className="relative inline-block mr-2" ref={dropdownRef}>
-            <button
-              onClick={() => setShowPopulaireDropdown(!showPopulaireDropdown)}
-              className="bg-white border border-gray-300 text-gray-800 px-4 py-2 rounded-xl text-sm font-medium flex items-center transition-colors duration-200 ease-in-out cursor-pointer hover:bg-gray-50"
-            >
-              {selectedPopulaire}
-              <svg
-                className={`h-4 w-4 ml-1 transition-transform duration-200 ${
-                  showPopulaireDropdown ? "transform rotate-180" : ""
-                }`}
-                fill="currentColor"
-                viewBox="0 0 20 20"
-              >
-                <path
-                  fillRule="evenodd"
-                  d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z"
-                  clipRule="evenodd"
-                />
-              </svg>
-            </button>
-
-            {showPopulaireDropdown && (
-              <div className="absolute mt-2 w-40 bg-white rounded-md shadow-lg py-1 z-10 transition-opacity duration-200 animate-fadeIn">
-                {["Populaire", "Récent", "Mieux noté", "Prix bas"].map(
-                  (option) => (
-                    <button
-                      key={option}
-                      className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 transition-colors duration-150 cursor-pointer"
-                      onClick={() => {
-                        setSelectedPopulaire(option);
-                        setShowPopulaireDropdown(false);
-                      }}
-                    >
-                      {option}
-                    </button>
-                  )
-                )}
-              </div>
-            )}
-          </div>
-        </div>
-
-        <button className="flex items-center text-gray-700 px-4 py-2 rounded-xl border border-gray-300 transition-all duration-200 hover:bg-gray-50 hover:shadow-sm">
-          <span>Filtres</span>
-          <svg
-            xmlns="http://www.w3.org/2000/svg"
-            className="h-4 w-4 ml-2"
-            fill="none"
-            viewBox="0 0 24 24"
-            stroke="currentColor"
+        <div className="relative inline-block">
+          <button
+            onClick={() => setShowCategoryDropdown(!showCategoryDropdown)}
+            className="flex items-center bg-white border border-gray-300 rounded-xl px-4 py-2 text-sm"
           >
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth={2}
-              d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z"
-            />
-          </svg>
-        </button>
+            <span>Filtres</span>
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              className="h-5 w-5 ml-2"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z"
+              />
+            </svg>
+          </button>
+
+          {showCategoryDropdown && (
+            <div className="absolute left-0 mt-2 w-48 bg-white rounded-md shadow-lg z-20">
+              {categories.map((cat) => (
+                <button
+                  key={cat.id}
+                  onClick={() => {
+                    setSelectedCategory(String(cat.id));
+                    setShowCategoryDropdown(false);
+                  }}
+                  className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                >
+                  {cat.name}
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
       </div>
+
       {/* ======= MOBILE FILTER SECTION ======= */}
       <div className="sm:hidden flex justify-between mb-6">
         {/* Populaire dropdown */}
-        <div className="relative">
-          <div className="relative inline-block mr-2" ref={dropdownRef}>
-            <button
-              onClick={() => setShowPopulaireDropdown(!showPopulaireDropdown)}
-              className="bg-white border border-gray-300 text-gray-800 px-4 py-2 rounded-md text-sm font-medium flex items-center transition-colors duration-200 ease-in-out cursor-pointer hover:bg-gray-50"
-            >
-              {selectedPopulaire}
-              <svg
-                className={`h-4 w-4 ml-1 transition-transform duration-200 ${
-                  showPopulaireDropdown ? "transform rotate-180" : ""
-                }`}
-                fill="currentColor"
-                viewBox="0 0 20 20"
-              >
-                <path
-                  fillRule="evenodd"
-                  d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z"
-                  clipRule="evenodd"
-                />
-              </svg>
-            </button>
-
-            {showPopulaireDropdown && (
-              <div className="absolute mt-2 w-40 bg-white rounded-md shadow-lg py-1 z-10 transition-opacity duration-200 animate-fadeIn">
-                {["Populaire", "Récent", "Mieux noté", "Prix bas"].map(
-                  (option) => (
-                    <button
-                      key={option}
-                      className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 transition-colors duration-150 cursor-pointer"
-                      onClick={() => {
-                        setSelectedPopulaire(option);
-                        setShowPopulaireDropdown(false);
-                      }}
-                    >
-                      {option}
-                    </button>
-                  )
-                )}
-              </div>
-            )}
-          </div>
-        </div>
+        <div className="relative"></div>
 
         {/* Filtres button */}
-        <button className="flex items-center bg-white border border-gray-300 rounded-md px-4 py-2 text-sm">
-          <span>Filtres</span>
-          <svg
-            xmlns="http://www.w3.org/2000/svg"
-            className="h-5 w-5 ml-2"
-            fill="none"
-            viewBox="0 0 24 24"
-            stroke="currentColor"
+        <div className="relative inline-block">
+          <button
+            onClick={() => setShowCategoryDropdown(!showCategoryDropdown)}
+            className="flex items-center bg-white border border-gray-300 rounded-xl px-4 py-2 text-sm"
           >
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth={2}
-              d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z"
-            />
-          </svg>
-        </button>
+            <span>Filtres</span>
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              className="h-5 w-5 ml-2"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z"
+              />
+            </svg>
+          </button>
+
+          {showCategoryDropdown && (
+            <div className="absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg z-20">
+              {categories.map((cat) => (
+                <button
+                  key={cat.id}
+                  onClick={() => {
+                    setSelectedCategory(String(cat.id));
+                    setShowCategoryDropdown(false);
+                  }}
+                  className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                >
+                  {cat.name}
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
       </div>
 
       {/* Mobile category tabs horizontal scrolling */}
@@ -516,13 +484,11 @@ export default function ExplorerPage() {
         </div>
       )}
 
-      {/* Error state */}
-      {error && (
-        <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-md mb-6">
-          {error}
+      {!loading && services.length === 0 && (
+        <div className="text-center text-gray-500 text-sm mt-8">
+          Aucun service trouvé.
         </div>
       )}
-
       {/* ======= DESKTOP SERVICES GRID ======= */}
       {!loading && (
         <div className="hidden sm:grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-x-6 gap-y-8">

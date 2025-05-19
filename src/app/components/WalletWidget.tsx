@@ -22,6 +22,7 @@ export default function WalletWidget({ onEnergyUsed }: WalletWidgetProps) {
   const [energyDescription, setEnergyDescription] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [isTransferModalOpen, setIsTransferModalOpen] = useState(false);
+  const [showConfirmationModal, setShowConfirmationModal] = useState(false);
 
   // Load wallet data
   const loadData = async () => {
@@ -353,10 +354,29 @@ export default function WalletWidget({ onEnergyUsed }: WalletWidgetProps) {
         isOpen={isTransferModalOpen}
         onClose={() => setIsTransferModalOpen(false)}
         onSuccess={() => {
-          setSuccessMessage("Énergie transférée avec succès !");
+          setIsTransferModalOpen(false); // CLOSE modal instantly
+          setShowConfirmationModal(true); // THEN show confirmation
           loadData(); // reload wallet info
         }}
       />
+      {showConfirmationModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center backdrop-blur-md bg-black/10 px-4">
+          <div className="bg-white rounded-lg shadow-lg w-full max-w-sm p-6 text-center">
+            <h2 className="text-lg font-bold text-green-600 mb-2">
+              ✅ Transfert Réussi
+            </h2>
+            <p className="text-gray-700 mb-4">
+              Énergie transférée avec succès !
+            </p>
+            <button
+              onClick={() => setShowConfirmationModal(false)}
+              className="px-4 py-2 bg-[#38AC8E] text-white rounded hover:bg-[#2e8d76]"
+            >
+              Fermer
+            </button>
+          </div>
+        </div>
+      )}
     </>
   );
 }

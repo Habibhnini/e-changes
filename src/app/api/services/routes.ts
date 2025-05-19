@@ -2,6 +2,7 @@
 import { NextResponse } from "next/server";
 
 export interface Service {
+  type: string;
   id: number;
   title: string;
   description: string;

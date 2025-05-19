@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, use } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
@@ -26,7 +26,8 @@ interface ServiceDetail {
   vendor: {
     id: number;
     email: string;
-    name: string;
+    firstName: string;
+    lastName: string;
     profileImage: string;
     rating: number;
   };
@@ -47,7 +48,9 @@ export default function ServiceDetailPage() {
   const [service, setService] = useState<ServiceDetail | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-
+  useEffect(() => {
+    console.log("Fetching service details...", service);
+  });
   // Fetch service data when component mounts
   useEffect(() => {
     const fetchServiceDetail = async () => {
@@ -67,13 +70,18 @@ export default function ServiceDetailPage() {
       fetchServiceDetail();
     }
   }, [id]);
+  const getFullImageUrl = (path: string): string => {
+    if (!path) return "/placeholder.png"; // fallback
+    if (path.startsWith("http")) return path;
+    return `http://localhost:8000${path}`;
+  };
 
   // Enhanced handleInterestClick function with better error handling
 
   const handleInterestClick = async () => {
     if (!isAuthenticated) {
       router.push(
-        `/login?redirect=${encodeURIComponent(`/explorer/service/${id}`)}`
+        `/auth?redirect=${encodeURIComponent(`/explorer/service/${id}`)}`
       );
       return;
     }
@@ -360,23 +368,25 @@ export default function ServiceDetailPage() {
                 <div className="flex items-center cursor-pointer hover:opacity-90 transition-opacity duration-200">
                   <div className="w-10 h-10 rounded-full overflow-hidden bg-gray-300 mr-3">
                     <Image
-                      src={service.vendor.profileImage || "/placeholder.png"}
+                      src={getFullImageUrl(service.vendor.profileImage)}
                       alt="User profile"
                       width={40}
                       height={40}
-                      className="rounded-full"
+                      className="h-full w-full object-cover"
                     />
                   </div>
                   <div>
                     <div className="flex items-center">
                       <div className="font-medium mr-2">
-                        {service.vendor.name}
+                        {service.vendor.firstName} {service.vendor.lastName}
                       </div>
                       <div className="flex">
                         {renderStars(service.vendor.rating)}
                       </div>
                     </div>
-                    <span className="text-xs text-gray-600">Vendeur</span>
+                    <span className="text-xs text-gray-600">
+                      {service.vendor.email}
+                    </span>
                   </div>
                 </div>
 
@@ -520,21 +530,25 @@ export default function ServiceDetailPage() {
             <div className="flex items-center mb-3 cursor-pointer hover:opacity-90 transition-opacity duration-200">
               <div className="w-8 h-8 rounded-full overflow-hidden bg-gray-300 mr-3">
                 <Image
-                  src={service.vendor.profileImage || "/placeholder.png"}
+                  src={getFullImageUrl(service.vendor.profileImage)}
                   alt="User profile"
                   width={40}
                   height={40}
-                  className="rounded-full"
+                  className="h-full w-full object-cover"
                 />
               </div>
               <div>
                 <div className="flex items-center">
-                  <div className="font-medium mr-2">{service.vendor.name}</div>
+                  <div className="font-medium mr-2">
+                    {service.vendor.firstName} {service.vendor.lastName}{" "}
+                  </div>
                   <div className="flex">
                     {renderStars(service.vendor.rating)}
                   </div>
                 </div>
-                <span className="text-xs text-gray-600">Vendeur</span>
+                <span className="text-xs text-gray-600">
+                  {service.vendor.email}
+                </span>
               </div>
             </div>
 

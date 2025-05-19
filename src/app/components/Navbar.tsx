@@ -7,6 +7,7 @@ import Image from "next/image";
 import { useAuth } from "../contexts/AuthContext";
 import { FaRegEnvelope, FaRegEnvelopeOpen } from "react-icons/fa";
 import { PiEnvelopeSimpleBold } from "react-icons/pi";
+import NotificationDropdown from "./NotificationDropdown";
 
 interface NavbarProps {
   isLoggedIn?: boolean;
@@ -107,23 +108,12 @@ const Navbar: React.FC<NavbarProps> = ({
                   />
                 </Link>
                 {/* Notification bell */}
-                <Link
-                  href={"/chat"}
-                  className="p-2 rounded-md text-gray-500 hover:text-gray-700 mr-2"
-                >
-                  <Image
-                    src="/bell.png"
-                    alt="User profile"
-                    width={24}
-                    height={24}
-                    className="w-4 h-5 "
-                  />
-                </Link>
+                <NotificationDropdown />
 
                 {/* Eco icon */}
                 <Link
                   href={"/transactions"}
-                  className="p-2 rounded-md text-teal-500 hover:text-teal-600 mr-2"
+                  className="p-2 pl-3 rounded-md text-teal-500 hover:text-teal-600 mr-2"
                 >
                   <Image
                     src="/shake.png"

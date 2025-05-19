@@ -120,11 +120,11 @@ export default function TransactionsPage() {
         const aVal =
           sortField === "energyAmount"
             ? a[sortField]
-            : new Date(a[sortField]).getTime();
+            : new Date(a[sortField] ?? 0).getTime();
         const bVal =
           sortField === "energyAmount"
             ? b[sortField]
-            : new Date(b[sortField]).getTime();
+            : new Date(b[sortField] ?? 0).getTime();
         return sortOrder === "asc" ? aVal - bVal : bVal - aVal;
       });
     }
