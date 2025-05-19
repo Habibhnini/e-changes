@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import apiClient from "../api/apiClient";
 import WalletWidget from "../components/WalletWidget";
 import TransferModal from "../components/TransferEnergyModal";
+import { Transaction } from "../api/walletApi";
 
 // Define TypeScript interfaces
 interface WalletTransaction {
@@ -95,12 +96,15 @@ export default function WalletPage() {
         endpoint = `/api/wallet/transactions/${type}`;
       }
 
-      const response = await apiClient.get(
-        `${endpoint}?page=${page}&limit=${limit}`
-      );
+      const response = await apiClient.get<{
+        data: any;
+        transactions: Transaction[];
+        pagination: { currentPage: number; totalPages: number };
+      }>(`${endpoint}?page=${page}&limit=${limit}`);
 
-      setTransactions(response.transactions);
-      setPagination(response.pagination);
+      setTransactions(response.data.transactions);
+      setPagination(response.data.pagination);
+
       setError(null);
     } catch (err) {
       setError(

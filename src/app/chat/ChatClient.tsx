@@ -45,10 +45,19 @@ export default function ChatPage() {
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const previousAmountRef = useRef<number | null>(null);
 
-  const getAuthHeaders = () =>
-    token
-      ? { "Content-Type": "application/json", Authorization: `Bearer ${token}` }
-      : { "Content-Type": "application/json" };
+  const getAuthHeaders = (): Record<string, string> => {
+    const token = localStorage.getItem("token");
+    const headers: Record<string, string> = {
+      "Content-Type": "application/json",
+    };
+
+    if (token) {
+      headers["Authorization"] = `Bearer ${token}`;
+    }
+
+    return headers;
+  };
+
   // Check screen size
   const isMobile = screenSize.width < 768;
   const isTablet = screenSize.width >= 768 && screenSize.width < 1024;

@@ -129,17 +129,7 @@ export default function VendorProfilePage() {
                   {vendorServices.map((service) => (
                     <ServiceCard
                       key={service.id}
-                      service={{
-                        id: service.id,
-                        title: service.title,
-                        description: service.description,
-                        category: service.category.name,
-                        imageUrl: service.imageUrl || null,
-                        price: service.price,
-                        rating: service.rating || 0,
-                        location: vendor.userInfo?.city || "Non spécifié",
-                        createdAt: service.createdAt,
-                      }}
+                      service={service}
                       isMobile={false}
                     />
                   ))}
@@ -158,17 +148,7 @@ export default function VendorProfilePage() {
                   {vendorBiens.map((service) => (
                     <ServiceCard
                       key={service.id}
-                      service={{
-                        id: service.id,
-                        title: service.title,
-                        description: service.description,
-                        category: service.category.name,
-                        imageUrl: service.imageUrl || null,
-                        price: service.price,
-                        rating: service.rating || 0,
-                        location: vendor.userInfo?.city || "Non spécifié",
-                        createdAt: service.createdAt,
-                      }}
+                      service={service}
                       isMobile={false}
                     />
                   ))}

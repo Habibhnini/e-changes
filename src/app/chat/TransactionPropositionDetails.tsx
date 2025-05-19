@@ -108,7 +108,7 @@ const TransactionDetails: React.FC<TransactionDetailsProps> = ({
   // CLOSE COUNTER FORM ON OUTSIDE CLICK
   // ────────────────────────────────────────────────────────────────────────────
   useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
+    const handleClickOutside = (event: globalThis.MouseEvent) => {
       if (
         counterOfferRef.current &&
         !counterOfferRef.current.contains(event.target as Node)
@@ -117,12 +117,9 @@ const TransactionDetails: React.FC<TransactionDetailsProps> = ({
       }
     };
 
-    document.addEventListener("mousedown", handleClickOutside as EventListener);
+    document.addEventListener("mousedown", handleClickOutside);
     return () => {
-      document.removeEventListener(
-        "mousedown",
-        handleClickOutside as EventListener
-      );
+      document.removeEventListener("mousedown", handleClickOutside);
     };
   }, []);
 
@@ -602,7 +599,10 @@ const TransactionDetails: React.FC<TransactionDetailsProps> = ({
         </div>
         <div className="flex justify-between">
           <span className="text-[15px] text-gray-600">Prix </span>
-          <span className="text-[15px] font-medium"> {transaction.energyAmount}</span>
+          <span className="text-[15px] font-medium">
+            {" "}
+            {transaction.energyAmount}
+          </span>
         </div>
       </div>
 

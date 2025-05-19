@@ -49,6 +49,7 @@ const generateMockServices = (): Service[] => {
       rating: Math.random() * 3 + 2, // Rating between 2 and 5
       location: locations[Math.floor(Math.random() * locations.length)],
       createdAt: date.toISOString(),
+      type: i % 2 === 0 ? "service" : "bien",
     };
   });
 };

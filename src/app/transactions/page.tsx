@@ -206,7 +206,7 @@ export default function TransactionsPage() {
 
         return;
       } else if (newStatus === "complete") {
-        await apiClient.post(`/api/transactions/${transactionId}/complete`);
+        await apiClient.post(`/api/transactions/${transactionId}/complete`, {});
       } else {
         await apiClient.put(`/api/transactions/${transactionId}/status`, {
           status: newStatus,
@@ -234,7 +234,7 @@ export default function TransactionsPage() {
       window.confirm("Êtes-vous sûr de vouloir annuler cette transaction ?")
     ) {
       try {
-        await apiClient.put(`/api/transactions/${transactionId}/cancel`);
+        await apiClient.put(`/api/transactions/${transactionId}/cancel`, {});
 
         // Update local state
         const updatedTransactions = transactions.map((transaction) =>
