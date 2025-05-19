@@ -52,7 +52,7 @@ export default function VendorProfilePage() {
 
   const getFullImageUrl = (path?: string) => {
     if (!path) return "/placeholder.png";
-    return path.startsWith("http") ? path : `http://localhost:8000${path}`;
+    return path.startsWith("http") ? path : `http://51.83.99.222:9000${path}`;
   };
 
   if (loading) {

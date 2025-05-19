@@ -124,7 +124,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const authenticateNotificationMercure = async (userId: number) => {
     try {
       const res = await fetch(
-        `http://localhost:8000/api/mercure/auth?topic=/user/${userId}/notifications`,
+        `http://51.83.99.222:9000/api/mercure/auth?topic=/user/${userId}/notifications`,
         {
           headers: {
             Authorization: `Bearer ${token}`,
@@ -179,7 +179,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const authenticateWalletMercure = async (userId: number) => {
     try {
-      const url = `http://localhost:8000/api/mercure/auth?topic=/user/${userId}/wallet`;
+      const url = `http://51.83.99.222:9000/api/mercure/auth?topic=/user/${userId}/wallet`;
       const res = await fetch(url, {
         headers: {
           Authorization: `Bearer ${token}`,
