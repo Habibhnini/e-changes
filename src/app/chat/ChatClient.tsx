@@ -105,7 +105,7 @@ export default function ChatPage() {
   // Helper function to get Mercure authentication token
   async function authenticateMercure() {
     try {
-      const url = `http://localhost:8096/api/mercure/auth?transaction=${selectedTransactionId}`;
+      const url = `http://51.83.99.222:8096/api/mercure/auth?transaction=${selectedTransactionId}`;
       const response = await fetch(url, {
         headers: getAuthHeaders(), // Bearer <app-jwt> etc.
       });

@@ -73,7 +73,7 @@ export default function ServiceDetailPage() {
   const getFullImageUrl = (path: string): string => {
     if (!path) return "/placeholder.png"; // fallback
     if (path.startsWith("http")) return path;
-    return `http://localhost:8096${path}`;
+    return `http://51.83.99.222:8096${path}`;
   };
 
   // Enhanced handleInterestClick function with better error handling
