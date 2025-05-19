@@ -31,7 +31,7 @@ async function authenticateMercure(
   transactionId: string
 ): Promise<string | null> {
   try {
-    const url = `http://51.83.99.222:9000/api/mercure/auth?transaction=${transactionId}`;
+    const url = `http://localhost:8096/api/mercure/auth?transaction=${transactionId}`;
     const response = await fetch(url, {
       headers: getAuthHeaders(), // Bearer <app-jwt> etc.
     });
