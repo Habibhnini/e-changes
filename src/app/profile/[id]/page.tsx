@@ -41,7 +41,7 @@ export default function VendorProfilePage() {
         setVendor(userData);
         setServices(serviceData.services || []);
       } catch (err) {
-        console.error("Erreur lors du chargement du profil vendeur:", err);
+        // console.error("Erreur lors du chargement du profil vendeur:", err);
       } finally {
         setLoading(false);
       }
@@ -52,7 +52,9 @@ export default function VendorProfilePage() {
 
   const getFullImageUrl = (path?: string) => {
     if (!path) return "/placeholder.png";
-    return path.startsWith("http") ? path : `http://51.83.99.222:8096${path}`;
+    return path.startsWith("http")
+      ? path
+      : `${process.env.NEXT_PUBLIC_API_URL}${path}`;
   };
 
   if (loading) {

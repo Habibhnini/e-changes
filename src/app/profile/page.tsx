@@ -8,6 +8,8 @@ import ServiceModal from "../components/ServiceModal";
 import { Service } from "../api/services/routes";
 import { loadStripe } from "@stripe/stripe-js";
 import StripeSubscribeButton from "../components/StripeSubscibeButton";
+import { useSubscriptionStatus } from "../hooks/useSubscription";
+
 export default function ProfilePage() {
   const [activeTab, setActiveTab] = useState("donnees");
   const [showModal, setShowModal] = useState(false);
@@ -22,7 +24,9 @@ export default function ProfilePage() {
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [imagePreview, setImagePreview] = useState<string | null>(null);
+  const { isActive, loading: subscriptionLoading } = useSubscriptionStatus();
   const imageInputRef = useRef<HTMLInputElement>(null);
+
   const [notification, setNotification] = useState({
     show: false,
     message: "",
@@ -135,7 +139,7 @@ export default function ProfilePage() {
           setUserBiens(biens);
         }
       } catch (err) {
-        console.error("Erreur lors du chargement des données:", err);
+        //  console.error("Erreur lors du chargement des données:", err);
         setError(
           "Impossible de charger les données. Veuillez réessayer plus tard."
         );
@@ -166,7 +170,7 @@ export default function ProfilePage() {
         setUserBiens(biens);
       }
     } catch (err) {
-      console.error("Erreur lors du rechargement des services:", err);
+      //  console.error("Erreur lors du rechargement des services:", err);
     }
   };
   return (
@@ -224,222 +228,230 @@ export default function ProfilePage() {
       </div>
 
       {/* User Profile Card - Always visible */}
-      {activeTab === "services" && (
-        <div className="flex flex-col md:flex-row gap-6">
-          {/* User Profile Card - Left Side */}
-          <div className="md:w-1/5 md:min-w-[250px] bg-white rounded-xl p-4 border border-gray-200 h-fit">
-            <div className="flex flex-col items-center">
-              <div className="w-24 h-24 relative mb-2">
-                <Image
-                  src={
-                    user?.userInfo?.photoIdPath
-                      ? `${process.env.NEXT_PUBLIC_API_URL}${user.userInfo.photoIdPath}`
-                      : "/placeholder.png"
-                  }
-                  alt="Profile"
-                  fill
-                  className="rounded-full object-cover"
-                />
+      {activeTab === "services" &&
+        (subscriptionLoading ? (
+          <div className="text-center mt-10 text-gray-500">Chargement...</div>
+        ) : isActive ? (
+          <div className="flex flex-col md:flex-row gap-6">
+            {/* User Profile Card - Left Side */}
+            <div className="md:w-1/5 md:min-w-[250px] bg-white rounded-xl p-4 border border-gray-200 h-fit">
+              <div className="flex flex-col items-center">
+                <div className="w-24 h-24 relative mb-2">
+                  <Image
+                    src={
+                      user?.userInfo?.photoIdPath
+                        ? `${process.env.NEXT_PUBLIC_API_URL}${user.userInfo.photoIdPath}`
+                        : "/placeholder.png"
+                    }
+                    alt="Profile"
+                    fill
+                    className="rounded-full object-cover"
+                  />
+                </div>
+                <h2 className="text-lg font-semibold">
+                  {user?.firstName} {user?.lastName}
+                </h2>
+                <p className="text-sm text-gray-500">{user?.email}</p>
               </div>
-              <h2 className="text-lg font-semibold">
-                {user?.firstName} {user?.lastName}
-              </h2>
-              <p className="text-sm text-gray-500">{user?.email}</p>
+
+              <div className="mt-4 space-y-3">
+                <div className="flex justify-between">
+                  <p className="text-sm text-gray-500">energy Balance</p>
+                  <p className="text-sm font-semibold">{user?.energyBalance}</p>
+                </div>
+                <div className="flex justify-between">
+                  <p className="text-sm text-gray-500">Localisation</p>
+                  <p className="text-sm font-semibold">
+                    {user?.userInfo?.city}
+                  </p>
+                </div>
+                <div>
+                  <p className="text-sm text-gray-500">Referal Code</p>
+                  <p className="text-sm font-semibold">{user?.referralCode}</p>
+                </div>
+              </div>
             </div>
 
-            <div className="mt-4 space-y-3">
-              <div className="flex justify-between">
-                <p className="text-sm text-gray-500">energy Balance</p>
-                <p className="text-sm font-semibold">{user?.energyBalance}</p>
-              </div>
-              <div className="flex justify-between">
-                <p className="text-sm text-gray-500">Localisation</p>
-                <p className="text-sm font-semibold">{user?.userInfo?.city}</p>
-              </div>
+            {/* Services and Biens - Right Side with Horizontal Scroll */}
+            <div className="md:w-4/5 space-y-8">
+              {/* Services */}
               <div>
-                <p className="text-sm text-gray-500">Referal Code</p>
-                <p className="text-sm font-semibold">{user?.referralCode}</p>
-              </div>
-            </div>
-          </div>
-
-          {/* Services and Biens - Right Side with Horizontal Scroll */}
-          <div className="md:w-4/5 space-y-8">
-            {/* Services */}
-            <div>
-              <div className="flex justify-between items-center mb-4">
-                <h2 className="text-xl font-medium">Mes services</h2>
-                <button
-                  onClick={() => openModal("service")}
-                  className="bg-[#38AC8E] text-white px-4 py-2 rounded-lg text-sm hover:bg-teal-600"
-                >
-                  Ajouter un service
-                </button>
-              </div>
-
-              <div className="overflow-x-auto pb-4">
-                <div className="flex gap-4 min-w-max">
-                  {userServices.length === 0 ? (
-                    <div className="bg-gray-50 rounded-lg p-6 text-center">
-                      <p className="text-gray-500">
-                        Vous n'avez pas encore ajouté de services.
-                      </p>
-                    </div>
-                  ) : (
-                    <div className="overflow-x-auto pb-4">
-                      <div className="flex gap-4 min-w-max">
-                        {userServices.map((service) => (
-                          <div
-                            key={service.id}
-                            className="w-72 ml-2 group transform transition-transform duration-300 hover:scale-[1.03]"
-                          >
-                            <div className="w-full h-48 bg-white rounded-lg mb-2 transition-all duration-300 group-hover:shadow-lg relative overflow-hidden border border-gray-200">
-                              {/* Placeholder image */}
-                              <div className="flex items-center justify-center h-full w-full ">
-                                <Image
-                                  src="/logo.jpg"
-                                  alt="Logo placeholder"
-                                  width={120}
-                                  height={120}
-                                  className="object-contain transition-transform duration-300 group-hover:scale-110"
-                                />
-                              </div>
-
-                              {/* Gradient overlay at the bottom */}
-                              <div className="absolute inset-x-0 bottom-0 h-1/2 bg-gradient-to-t from-black/45 to-transparent rounded-b-lg">
-                                <div className="absolute bottom-0 left-0 right-0 p-3">
-                                  <div className="flex justify-between items-center">
-                                    <div className="text-[#fce070] text-lg font-medium flex items-center">
-                                      {service.price}
-                                      <Image
-                                        src="/coin.png"
-                                        alt="User profile"
-                                        width={40}
-                                        height={40}
-                                        className="object-cover ml-2 w-5 h-5"
-                                      />
-                                    </div>
-                                    <div className="text-white text-sm flex items-center">
-                                      <IoLocationOutline className="mr-1 w-5 h-5" />
-                                      {user?.userInfo?.city || "Non spécifié"}
-                                    </div>
-                                  </div>
-                                </div>
-                              </div>
-                            </div>
-
-                            <div className="mt-1 ml-4 flex items-center">
-                              <div>
-                                <h3 className="font-medium text-gray-800 group-hover:text-[#38AC8E] transition-colors duration-200">
-                                  {service.title}
-                                </h3>
-                                <p className="text-xs text-gray-500 line-clamp-2">
-                                  {service.description}
-                                </p>
-                              </div>
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  )}
+                <div className="flex justify-between items-center mb-4">
+                  <h2 className="text-xl font-medium">Mes services</h2>
+                  <button
+                    onClick={() => openModal("service")}
+                    className="bg-[#38AC8E] text-white px-4 py-2 rounded-lg text-sm hover:bg-teal-600"
+                  >
+                    Ajouter un service
+                  </button>
                 </div>
-              </div>
-            </div>
 
-            {/* Biens */}
-            {/* Biens */}
-            <div>
-              <div className="flex justify-between items-center mb-4">
-                <h2 className="text-xl font-medium">Mes biens</h2>
-                <button
-                  onClick={() => openModal("bien")}
-                  className="bg-[#DEB887] text-white px-4 py-2 rounded-lg text-sm hover:bg-[#C8A275]"
-                >
-                  Ajouter un bien
-                </button>
-              </div>
+                <div className="overflow-x-auto pb-4">
+                  <div className="flex gap-4 min-w-max">
+                    {userServices.length === 0 ? (
+                      <div className="bg-gray-50 rounded-lg p-6 text-center">
+                        <p className="text-gray-500">
+                          Vous n'avez pas encore ajouté de services.
+                        </p>
+                      </div>
+                    ) : (
+                      <div className="overflow-x-auto pb-4">
+                        <div className="flex gap-4 min-w-max">
+                          {userServices.map((service) => (
+                            <div
+                              key={service.id}
+                              className="w-72 ml-2 group transform transition-transform duration-300 hover:scale-[1.03]"
+                            >
+                              <div className="w-full h-48 bg-white rounded-lg mb-2 transition-all duration-300 group-hover:shadow-lg relative overflow-hidden border border-gray-200">
+                                {/* Placeholder image */}
+                                <div className="flex items-center justify-center h-full w-full ">
+                                  <Image
+                                    src="/logo.jpg"
+                                    alt="Logo placeholder"
+                                    width={120}
+                                    height={120}
+                                    className="object-contain transition-transform duration-300 group-hover:scale-110"
+                                  />
+                                </div>
 
-              <div className="overflow-x-auto pb-4">
-                <div className="flex gap-4 min-w-max">
-                  {userBiens.length === 0 ? (
-                    <div className="bg-gray-50 rounded-lg p-6 text-center">
-                      <p className="text-gray-500">
-                        Vous n'avez pas encore ajouté de biens.
-                      </p>
-                    </div>
-                  ) : (
-                    <div className="overflow-x-auto pb-4">
-                      <div className="flex gap-4 min-w-max">
-                        {userBiens.map((bien) => (
-                          <div
-                            key={bien.id}
-                            className="w-72 ml-2 group transform transition-transform duration-300 hover:scale-[1.03]"
-                          >
-                            <div className="w-full h-48 bg-white rounded-lg mb-2 transition-all duration-300 group-hover:shadow-lg relative overflow-hidden border border-gray-200">
-                              {/* Placeholder image */}
-                              <div className="flex items-center justify-center h-full w-full ">
-                                <Image
-                                  src="/logo.jpg"
-                                  alt="Logo placeholder"
-                                  width={120}
-                                  height={120}
-                                  className="object-contain transition-transform duration-300 group-hover:scale-110"
-                                />
-                              </div>
-
-                              {/* Permanent partial gradient overlay at the bottom */}
-                              <div className="absolute inset-x-0 bottom-0 h-1/2 bg-gradient-to-t from-black/45 to-transparent rounded-b-lg">
-                                {/* Bottom section with price and location */}
-                                <div className="absolute bottom-0 left-0 right-0 p-3">
-                                  <div className="flex justify-between items-center">
-                                    {/* Price in the bottom left corner */}
-                                    <div className="text-[#fce070] text-lg font-medium flex items-center">
-                                      {bien.price}
-                                      <Image
-                                        src="/coin.png"
-                                        alt="User profile"
-                                        width={40}
-                                        height={40}
-                                        className="object-cover ml-2 w-5 h-5"
-                                      />
-                                    </div>
-
-                                    {/* Location in the bottom right corner */}
-                                    <div className="text-white text-sm flex items-center">
-                                      <IoLocationOutline className="mr-1 w-5 h-5" />
-                                      {user?.userInfo?.city || "Non spécifié"}
+                                {/* Gradient overlay at the bottom */}
+                                <div className="absolute inset-x-0 bottom-0 h-1/2 bg-gradient-to-t from-black/45 to-transparent rounded-b-lg">
+                                  <div className="absolute bottom-0 left-0 right-0 p-3">
+                                    <div className="flex justify-between items-center">
+                                      <div className="text-[#fce070] text-lg font-medium flex items-center">
+                                        {service.price}
+                                        <Image
+                                          src="/coin.png"
+                                          alt="User profile"
+                                          width={40}
+                                          height={40}
+                                          className="object-cover ml-2 w-5 h-5"
+                                        />
+                                      </div>
+                                      <div className="text-white text-sm flex items-center">
+                                        <IoLocationOutline className="mr-1 w-5 h-5" />
+                                        {user?.userInfo?.city || "Non spécifié"}
+                                      </div>
                                     </div>
                                   </div>
                                 </div>
                               </div>
 
-                              {/* Additional overlay that appears on hover */}
-                              <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/40 to-transparent opacity-0 group-hover:transition-opacity duration-300 rounded-lg"></div>
-                            </div>
-
-                            {/* Bien information below the image */}
-                            <div className="mt-1 ml-4 flex items-center">
-                              <div>
-                                <h3 className="font-medium text-gray-800 group-hover:text-[#DEB887] transition-colors duration-200">
-                                  {bien.title}
-                                </h3>
-                                <p className="text-xs text-gray-500 line-clamp-2">
-                                  {bien.description}
-                                </p>
+                              <div className="mt-1 ml-4 flex items-center">
+                                <div>
+                                  <h3 className="font-medium text-gray-800 group-hover:text-[#38AC8E] transition-colors duration-200">
+                                    {service.title}
+                                  </h3>
+                                  <p className="text-xs text-gray-500 line-clamp-2">
+                                    {service.description}
+                                  </p>
+                                </div>
                               </div>
                             </div>
-                          </div>
-                        ))}
+                          ))}
+                        </div>
                       </div>
-                    </div>
-                  )}
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              {/* Biens */}
+              <div>
+                <div className="flex justify-between items-center mb-4">
+                  <h2 className="text-xl font-medium">Mes biens</h2>
+                  <button
+                    onClick={() => openModal("bien")}
+                    className="bg-[#DEB887] text-white px-4 py-2 rounded-lg text-sm hover:bg-[#C8A275]"
+                  >
+                    Ajouter un bien
+                  </button>
+                </div>
+
+                <div className="overflow-x-auto pb-4">
+                  <div className="flex gap-4 min-w-max">
+                    {userBiens.length === 0 ? (
+                      <div className="bg-gray-50 rounded-lg p-6 text-center">
+                        <p className="text-gray-500">
+                          Vous n'avez pas encore ajouté de biens.
+                        </p>
+                      </div>
+                    ) : (
+                      <div className="overflow-x-auto pb-4">
+                        <div className="flex gap-4 min-w-max">
+                          {userBiens.map((bien) => (
+                            <div
+                              key={bien.id}
+                              className="w-72 ml-2 group transform transition-transform duration-300 hover:scale-[1.03]"
+                            >
+                              <div className="w-full h-48 bg-white rounded-lg mb-2 transition-all duration-300 group-hover:shadow-lg relative overflow-hidden border border-gray-200">
+                                {/* Placeholder image */}
+                                <div className="flex items-center justify-center h-full w-full ">
+                                  <Image
+                                    src="/logo.jpg"
+                                    alt="Logo placeholder"
+                                    width={120}
+                                    height={120}
+                                    className="object-contain transition-transform duration-300 group-hover:scale-110"
+                                  />
+                                </div>
+
+                                {/* Permanent partial gradient overlay at the bottom */}
+                                <div className="absolute inset-x-0 bottom-0 h-1/2 bg-gradient-to-t from-black/45 to-transparent rounded-b-lg">
+                                  {/* Bottom section with price and location */}
+                                  <div className="absolute bottom-0 left-0 right-0 p-3">
+                                    <div className="flex justify-between items-center">
+                                      {/* Price in the bottom left corner */}
+                                      <div className="text-[#fce070] text-lg font-medium flex items-center">
+                                        {bien.price}
+                                        <Image
+                                          src="/coin.png"
+                                          alt="User profile"
+                                          width={40}
+                                          height={40}
+                                          className="object-cover ml-2 w-5 h-5"
+                                        />
+                                      </div>
+
+                                      {/* Location in the bottom right corner */}
+                                      <div className="text-white text-sm flex items-center">
+                                        <IoLocationOutline className="mr-1 w-5 h-5" />
+                                        {user?.userInfo?.city || "Non spécifié"}
+                                      </div>
+                                    </div>
+                                  </div>
+                                </div>
+
+                                {/* Additional overlay that appears on hover */}
+                                <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/40 to-transparent opacity-0 group-hover:transition-opacity duration-300 rounded-lg"></div>
+                              </div>
+
+                              {/* Bien information below the image */}
+                              <div className="mt-1 ml-4 flex items-center">
+                                <div>
+                                  <h3 className="font-medium text-gray-800 group-hover:text-[#DEB887] transition-colors duration-200">
+                                    {bien.title}
+                                  </h3>
+                                  <p className="text-xs text-gray-500 line-clamp-2">
+                                    {bien.description}
+                                  </p>
+                                </div>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </div>
                 </div>
               </div>
             </div>
           </div>
-        </div>
-      )}
+        ) : (
+          <div className="text-center mt-10 text-red-500">
+            Accès réservé aux abonnés actifs
+          </div>
+        ))}
       {/* Modal */}
       {showModal && modalType && user && (
         <ServiceModal

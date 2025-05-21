@@ -39,8 +39,6 @@ export default function AuthPage() {
 
   // Files for identity verification
   const [photoId, setPhotoId] = useState<File | null>(null);
-  const [idCardFront, setIdCardFront] = useState<File | null>(null);
-  const [idCardBack, setIdCardBack] = useState<File | null>(null);
 
   const { login, register, uploadIdentityDocuments, completeSubscription } =
     useAuth();
@@ -63,7 +61,7 @@ export default function AuthPage() {
       await login(loginEmail, loginPassword, rememberMe);
       router.push("/explorer");
     } catch (err) {
-      console.error("Login error:", err);
+      // console.error("Login error:", err);
       setError("Email ou mot de passe invalide");
     } finally {
       setIsLoading(false);
@@ -87,7 +85,7 @@ export default function AuthPage() {
       setRegistrationStep(3);
     } else if (registrationStep === 3) {
       // Verify that we have all the required files
-      if (!photoId || !idCardFront || !idCardBack) {
+      if (!photoId) {
         setError("Veuillez télécharger tous les documents requis");
         return;
       }
@@ -104,10 +102,6 @@ export default function AuthPage() {
   const handleFileUpload = (fileType: string, file: File) => {
     if (fileType === "photoId") {
       setPhotoId(file);
-    } else if (fileType === "idCardFront") {
-      setIdCardFront(file);
-    } else if (fileType === "idCardBack") {
-      setIdCardBack(file);
     }
   };
 
@@ -146,12 +140,6 @@ export default function AuthPage() {
       if (photoId) {
         formData.append("photoId", photoId);
       }
-      if (idCardFront) {
-        formData.append("idCardFront", idCardFront);
-      }
-      if (idCardBack) {
-        formData.append("idCardBack", idCardBack);
-      }
 
       // Use the API client instead of direct fetch
       const result = await apiClient.registerWithFormData(formData);
@@ -164,7 +152,7 @@ export default function AuthPage() {
         throw new Error("No token received");
       }
     } catch (err) {
-      console.error("Registration error:", err);
+      // console.error("Registration error:", err);
       setError(
         err instanceof Error
           ? err.message
@@ -270,19 +258,6 @@ export default function AuthPage() {
             )}
 
             {activeTab === "register" && registrationStep === 3 && (
-              <RegistrationStep3
-                handleRegistrationNext={handleRegistrationNext}
-                handleRegistrationBack={handleRegistrationBack}
-                error={error}
-                setActiveTab={setActiveTab}
-                handleFileUpload={handleFileUpload}
-                photoId={photoId}
-                idCardFront={idCardFront}
-                idCardBack={idCardBack}
-              />
-            )}
-
-            {activeTab === "register" && registrationStep === 4 && (
               <RegistrationStep4
                 country={country}
                 setCountry={setCountry}
@@ -301,6 +276,8 @@ export default function AuthPage() {
                 isLoading={isLoading}
                 error={error}
                 setActiveTab={setActiveTab}
+                photoId={photoId}
+                handleFileUpload={handleFileUpload}
               />
             )}
           </div>

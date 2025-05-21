@@ -44,7 +44,7 @@ export default function ChatPage() {
   const [error, setError] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const previousAmountRef = useRef<number | null>(null);
-
+  const [initialNavDone, setInitialNavDone] = useState(false);
   const getAuthHeaders = (): Record<string, string> => {
     const token = localStorage.getItem("token");
     const headers: Record<string, string> = {
@@ -83,7 +83,7 @@ export default function ChatPage() {
         const { transaction } = await res.json();
         setTransaction(transaction);
       } catch (err) {
-        console.error("Failed to load transaction:", err);
+        // console.error("Failed to load transaction:", err);
         setError("Impossible de charger la transaction");
       }
     })();
@@ -105,7 +105,7 @@ export default function ChatPage() {
   // Helper function to get Mercure authentication token
   async function authenticateMercure() {
     try {
-      const url = `http://51.83.99.222:8096/api/mercure/auth?transaction=${selectedTransactionId}`;
+      const url = `${process.env.NEXT_PUBLIC_API_URL}/api/mercure/auth?transaction=${selectedTransactionId}`;
       const response = await fetch(url, {
         headers: getAuthHeaders(), // Bearer <app-jwt> etc.
       });
@@ -322,9 +322,10 @@ export default function ChatPage() {
         setOtherUser(data.otherUser);
         setLoading(false);
 
-        // If on mobile, switch to chat view when data is loaded
-        if (isMobile && mobileView === "list") {
+        // MODIFIED: Only automatically switch to chat on first load
+        if (isMobile && mobileView === "list" && !initialNavDone) {
           setMobileView("chat");
+          setInitialNavDone(true);
         }
 
         // Scroll to bottom after messages load
@@ -339,8 +340,38 @@ export default function ChatPage() {
     };
 
     fetchMessages();
-  }, [token, currentUser, selectedTransactionId, isMobile, mobileView, router]);
+  }, [
+    token,
+    currentUser,
+    selectedTransactionId,
+    isMobile,
+    mobileView,
+    initialNavDone,
+  ]);
 
+  // 3. Make sure initial view is correctly set
+  useEffect(() => {
+    // On initial load with no transaction, default to list view on mobile
+    if (isMobile && !selectedTransactionId) {
+      setMobileView("list");
+    }
+  }, []);
+
+  // Your existing navigation handlers will work fine with this approach
+
+  const handleOpenChat = useCallback(
+    (conversationId: number) => {
+      if (conversationId.toString() !== selectedTransactionId) {
+        // Navigate to the selected conversation
+        router.push(`/chat?transaction=${conversationId}`, { scroll: false });
+        // Reset initial nav when changing transactions
+        setInitialNavDone(false);
+      } else {
+        setMobileView("chat");
+      }
+    },
+    [selectedTransactionId, router]
+  );
   // Scroll to bottom when messages change
   useEffect(() => {
     scrollToBottom();
@@ -535,19 +566,6 @@ export default function ChatPage() {
       return activity;
     }
   };
-
-  // Mobile navigation handlers
-  const handleOpenChat = useCallback(
-    (conversationId: number) => {
-      if (conversationId.toString() !== selectedTransactionId) {
-        // Navigate to the selected conversation
-        router.push(`/chat?transaction=${conversationId}`, { scroll: false });
-      } else {
-        setMobileView("chat");
-      }
-    },
-    [selectedTransactionId, router]
-  );
 
   const handleBackToList = useCallback(() => {
     setMobileView("list");

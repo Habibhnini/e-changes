@@ -5,10 +5,13 @@ import { getStripe } from "../utils/stripe"; // the utility that calls loadStrip
 
 export default function SubscribeButton() {
   const handleSubscribe = async () => {
-    const res = await fetch("http://51.83.99.222:8096/api/stripe/checkout", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-    });
+    const res = await fetch(
+      `${process.env.NEXT_PUBLIC_API_URL}/api/stripe/checkout`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+      }
+    );
 
     const data = await res.json();
 

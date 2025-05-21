@@ -33,7 +33,7 @@ export default function WalletWidget({ onEnergyUsed }: WalletWidgetProps) {
       const walletData = await getWalletInfo();
       setWallet(walletData);
     } catch (err) {
-      console.error(err);
+      // console.error(err);
       setError(
         err instanceof Error ? err.message : "Échec du chargement du portefeuil"
       );
@@ -82,7 +82,7 @@ export default function WalletWidget({ onEnergyUsed }: WalletWidgetProps) {
         setSuccessMessage(null);
       }, 3000);
     } catch (err: any) {
-      console.error(err);
+      //   console.error(err);
       setError(err.message || "Échec de l'utilisation de l'énergie");
     } finally {
       setSubmitting(false);

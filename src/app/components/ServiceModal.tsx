@@ -33,7 +33,7 @@ const ServiceModal: React.FC<ServiceModalProps> = ({
         const data = await res.json();
         setCategories(data.categories);
       } catch (err) {
-        console.error(err);
+        //  console.error(err);
       }
     }
     fetchCategories();
@@ -81,7 +81,7 @@ const ServiceModal: React.FC<ServiceModalProps> = ({
       onCreated();
       onClose();
     } catch (err) {
-      console.error(err);
+      //  console.error(err);
       setError("Erreur réseau");
       setIsSubmitting(false);
     }

@@ -31,7 +31,7 @@ async function authenticateMercure(
   transactionId: string
 ): Promise<string | null> {
   try {
-    const url = `http://51.83.99.222:8096/api/mercure/auth?transaction=${transactionId}`;
+    const url = `${process.env.NEXT_PUBLIC_API_URL}/api/mercure/auth?transaction=${transactionId}`;
     const response = await fetch(url, {
       headers: getAuthHeaders(), // Bearer <app-jwt> etc.
     });
@@ -146,7 +146,7 @@ const TransactionDetails: React.FC<TransactionDetailsProps> = ({
           }))
         );
       } catch (e) {
-        console.error("Failed to load offers:", e);
+        //console.error("Failed to load offers:", e);
         setError("Impossible de charger les offres");
       }
     })();
@@ -174,53 +174,60 @@ const TransactionDetails: React.FC<TransactionDetailsProps> = ({
 
       es = new EventSource(url.toString());
 
-      es.onopen = () => console.log("✅ Offers SSE connected");
-      es.onerror = (err) => console.error("⚠️ Offers SSE error", err);
+      es.onopen = () =>
+        //console.log("✅ Offers SSE connected");
+        (es.onerror = (
+          err // console.error("⚠️ Offers SSE error", err);
+        ) =>
+          // Inside your useEffect SSE handler, replace the new_offer branch with:
 
-      // Inside your useEffect SSE handler, replace the new_offer branch with:
+          (es.onmessage = (evt) => {
+            const data = JSON.parse(evt.data);
+            const raw = data.offer as any;
 
-      es.onmessage = (evt) => {
-        const data = JSON.parse(evt.data);
-        const raw = data.offer as any;
+            // 1) If it's your own offer, skip it entirely
+            if (
+              data.type === "new_offer" &&
+              raw.sender.id === currentUser?.id
+            ) {
+              return;
+            }
 
-        // 1) If it's your own offer, skip it entirely
-        if (data.type === "new_offer" && raw.sender.id === currentUser?.id) {
-          return;
-        }
+            setNegotiationHistory((prev) => {
+              // NEW OFFER from the other side
+              if (data.type === "new_offer") {
+                if (prev.some((o) => o.id === raw.id)) return prev;
+                return [
+                  ...prev,
+                  { ...raw, sender: { ...raw.sender, isYou: false } },
+                ];
+              }
 
-        setNegotiationHistory((prev) => {
-          // NEW OFFER from the other side
-          if (data.type === "new_offer") {
-            if (prev.some((o) => o.id === raw.id)) return prev;
-            return [
-              ...prev,
-              { ...raw, sender: { ...raw.sender, isYou: false } },
-            ];
-          }
+              // ACCEPT / REJECT as before...
+              if (
+                data.type === "offer_accepted" ||
+                data.type === "offer_rejected"
+              ) {
+                return prev.map((o) =>
+                  o.id === raw.id
+                    ? {
+                        ...raw,
+                        status:
+                          data.type === "offer_accepted"
+                            ? "accepted"
+                            : "rejected",
+                        sender: {
+                          ...raw.sender,
+                          isYou: raw.sender.id === currentUser?.id,
+                        },
+                      }
+                    : o
+                );
+              }
 
-          // ACCEPT / REJECT as before...
-          if (
-            data.type === "offer_accepted" ||
-            data.type === "offer_rejected"
-          ) {
-            return prev.map((o) =>
-              o.id === raw.id
-                ? {
-                    ...raw,
-                    status:
-                      data.type === "offer_accepted" ? "accepted" : "rejected",
-                    sender: {
-                      ...raw.sender,
-                      isYou: raw.sender.id === currentUser?.id,
-                    },
-                  }
-                : o
-            );
-          }
-
-          return prev;
-        });
-      };
+              return prev;
+            });
+          }));
     })();
 
     return () => {

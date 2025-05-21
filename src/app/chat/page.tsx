@@ -1,7 +1,24 @@
+"use client";
+
 import { Suspense } from "react";
 import ChatClient from "./ChatClient";
+import { useSubscriptionStatus } from "../hooks/useSubscription";
 
 export default function ChatPage() {
+  const { isActive, loading } = useSubscriptionStatus();
+
+  if (loading) {
+    return <ChatLoadingFallback />;
+  }
+
+  if (!isActive) {
+    return (
+      <div className="text-center mt-10 text-red-500">
+        Accès réservé aux abonnés actifs
+      </div>
+    );
+  }
+
   return (
     <Suspense fallback={<ChatLoadingFallback />}>
       <ChatClient />

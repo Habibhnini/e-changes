@@ -129,8 +129,8 @@ const TransactionDetails: React.FC<TransactionDetailsProps> = ({
       setSuccess(true);
       setTimeout(() => setSuccess(false), 3000);
     } catch (err) {
-      console.error(err);
-      setError("Impossible de mettre à jour le montant");
+      // console.error(err);
+      // setError("Impossible de mettre à jour le montant");
     }
   };
   useEffect(() => {

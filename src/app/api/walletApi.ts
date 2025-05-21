@@ -159,7 +159,7 @@ export const getWalletTransactions = async (
 
     return await response.json();
   } catch (error) {
-    console.error("Error fetching wallet transactions:", error);
+    // console.error("Error fetching wallet transactions:", error);
     throw error;
   }
 };

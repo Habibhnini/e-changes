@@ -75,7 +75,7 @@ export default function ExplorerPage() {
         const data = await res.json();
         if (data.success) setCategories(data.categories);
       } catch (err) {
-        console.error("Failed to load categories", err);
+        //  console.error("Failed to load categories", err);
       }
     };
     fetchCategories();
@@ -184,9 +184,7 @@ export default function ExplorerPage() {
 
     return () => clearTimeout(debounceTimer);
   }, [selectedService, selectedCategory]);
-  useEffect(() => {
-    console.log("Selected sort:", selectedSort);
-  }, [selectedSort]);
+
   return (
     <div className="max-w-[1800px] mx-auto px-4 sm:px-6 lg:px-8 py-8">
       {/* Hero section with Georgia font */}

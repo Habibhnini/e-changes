@@ -48,9 +48,7 @@ export default function ServiceDetailPage() {
   const [service, setService] = useState<ServiceDetail | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  useEffect(() => {
-    console.log("Fetching service details...", service);
-  });
+
   // Fetch service data when component mounts
   useEffect(() => {
     const fetchServiceDetail = async () => {
@@ -59,7 +57,7 @@ export default function ServiceDetailPage() {
         const data = await apiClient.getServiceDetail(id);
         setService(data);
       } catch (err) {
-        console.error("Error fetching service details:", err);
+        // console.error("Error fetching service details:", err);
         setError("Failed to load service details. Please try again later.");
       } finally {
         setLoading(false);
@@ -73,7 +71,7 @@ export default function ServiceDetailPage() {
   const getFullImageUrl = (path: string): string => {
     if (!path) return "/placeholder.png"; // fallback
     if (path.startsWith("http")) return path;
-    return `http://51.83.99.222:8096${path}`;
+    return `${process.env.NEXT_PUBLIC_API_URL}${path}`;
   };
 
   // Enhanced handleInterestClick function with better error handling
@@ -97,7 +95,7 @@ export default function ServiceDetailPage() {
     try {
       if (service?.transaction) {
         // If transaction already exists, redirect to the chat page with transaction ID
-        console.log("Using existing transaction:", service.transaction.id);
+        // console.log("Using existing transaction:", service.transaction.id);
         router.push(`/chat?transaction=${service.transaction.id}`);
       } else {
         // Create a new transaction
@@ -114,7 +112,7 @@ export default function ServiceDetailPage() {
 
         // Get the response text for debugging
         const responseText = await response.text();
-        console.log("API Response:", response.status, responseText);
+        //  console.log("API Response:", response.status, responseText);
 
         if (!response.ok) {
           throw new Error(
@@ -141,7 +139,7 @@ export default function ServiceDetailPage() {
         }
       }
     } catch (err) {
-      console.error("Error starting transaction:", err);
+      //  console.error("Error starting transaction:", err);
       setError(`Failed to start transaction: ${err}`);
     } finally {
       setLoading(false);

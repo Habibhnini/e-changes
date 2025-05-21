@@ -1,4 +1,4 @@
-// RegistrationStep4.tsx
+// RegistrationStep4.tsx (UPDATED WITH PHOTO UPLOAD)
 import React from "react";
 import Image from "next/image";
 
@@ -20,6 +20,8 @@ interface RegistrationStep4Props {
   isLoading: boolean;
   error: string;
   setActiveTab: (tab: string) => void;
+  photoId: File | null;
+  handleFileUpload: (fileType: string, file: File) => void;
 }
 
 const RegistrationStep4: React.FC<RegistrationStep4Props> = ({
@@ -40,6 +42,8 @@ const RegistrationStep4: React.FC<RegistrationStep4Props> = ({
   isLoading,
   error,
   setActiveTab,
+  photoId,
+  handleFileUpload,
 }) => {
   return (
     <form className="p-6 space-y-4" onSubmit={handleRegistrationFinish}>
@@ -51,9 +55,8 @@ const RegistrationStep4: React.FC<RegistrationStep4Props> = ({
 
       <div className="text-center mb-4">
         <h3 className="text-lg font-medium text-gray-900">
-          Résumé pour abonnement annuel e-change
+          Information suplementaire
         </h3>
-        <p className="text-3xl font-bold">20€</p>
       </div>
 
       <div>
@@ -81,7 +84,7 @@ const RegistrationStep4: React.FC<RegistrationStep4Props> = ({
           htmlFor="address-line-1"
           className="block text-sm font-medium text-gray-700"
         >
-          Adresse ligne 1
+          Adresse ligne 1*
         </label>
         <input
           type="text"
@@ -162,6 +165,53 @@ const RegistrationStep4: React.FC<RegistrationStep4Props> = ({
         />
       </div>
 
+      <div>
+        <label className="block text-sm font-medium text-gray-700">
+          VOTRE PHOTO
+          {photoId && (
+            <span className="text-green-500 text-xs">(Fichier ajouté)</span>
+          )}
+        </label>
+        <div className="mt-1 flex justify-center px-6 pt-3 pb-3 border-2 border-gray-300 border-dashed rounded-md">
+          <div className="space-y-1 text-center">
+            <svg
+              className="mx-auto h-10 w-10 text-gray-400"
+              stroke="currentColor"
+              fill="none"
+              viewBox="0 0 48 48"
+              aria-hidden="true"
+            >
+              <path
+                d="M28 8H12a4 4 0 00-4 4v20m32-12v8m0 0v8a4 4 0 01-4 4H12a4 4 0 01-4-4v-4m32-4l-3.172-3.172a4 4 0 00-5.656 0L28 28M8 32l9.172-9.172a4 4 0 015.656 0L28 28m0 0l4 4m4-24h8m-4-4v8m-12 4h.02"
+                strokeWidth={2}
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              />
+            </svg>
+            <div className="flex text-sm text-gray-600">
+              <label
+                htmlFor="photo-upload"
+                className="relative cursor-pointer bg-white rounded-md font-medium text-teal-500 hover:text-teal-400 focus-within:outline-none"
+              >
+                <span>Cliquer pour ajouter votre photo</span>
+                <input
+                  id="photo-upload"
+                  name="photo-upload"
+                  type="file"
+                  className="sr-only"
+                  onChange={(e) => {
+                    if (e.target.files && e.target.files[0]) {
+                      handleFileUpload("photoId", e.target.files[0]);
+                    }
+                  }}
+                  accept="image/*"
+                />
+              </label>
+            </div>
+          </div>
+        </div>
+      </div>
+
       <div className="flex items-center justify-between mt-4">
         <button
           type="button"
@@ -175,7 +225,7 @@ const RegistrationStep4: React.FC<RegistrationStep4Props> = ({
           disabled={isLoading}
           className="flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-teal-500 hover:bg-teal-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-teal-500 cursor-pointer"
         >
-          {isLoading ? "Traitement..." : "PAYER ET ADHÉRER →"}
+          {isLoading ? "Traitement..." : "S'inscrire →"}
         </button>
       </div>
 
@@ -193,15 +243,6 @@ const RegistrationStep4: React.FC<RegistrationStep4Props> = ({
             Connectez-vous
           </a>
         </p>
-      </div>
-
-      <div className="flex justify-center mt-2">
-        <Image
-          src="/stripe-logo.png"
-          alt="Powered by Stripe"
-          width={50}
-          height={20}
-        />
       </div>
     </form>
   );

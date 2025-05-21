@@ -113,7 +113,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       localStorage.setItem("user", JSON.stringify(userData));
       return userData;
     } catch (error) {
-      console.error("Error fetching user profile:", error);
+      // console.error("Error fetching user profile:", error);
       setUser(null);
       setToken(null);
       localStorage.removeItem("token");
@@ -124,7 +124,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const authenticateNotificationMercure = async (userId: number) => {
     try {
       const res = await fetch(
-        `http://51.83.99.222:8096/api/mercure/auth?topic=/user/${userId}/notifications`,
+        `${process.env.NEXT_PUBLIC_API_URL}/api/mercure/auth?topic=/user/${userId}/notifications`,
         {
           headers: {
             Authorization: `Bearer ${token}`,
@@ -137,7 +137,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       const data = await res.json();
       return data.token;
     } catch (err) {
-      console.error("Notification Mercure auth error:", err);
+      // console.error("Notification Mercure auth error:", err);
       return null;
     }
   };
@@ -161,12 +161,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           setNotifications((prev) => [notif, ...prev]);
           setUnreadCount((prev) => prev + 1);
         } catch (err) {
-          console.error("Error parsing notification:", err);
+          //  console.error("Error parsing notification:", err);
         }
       };
 
       eventSource.onerror = (err) => {
-        console.error("Notification Mercure error", err);
+        //  console.error("Notification Mercure error", err);
       };
     };
 
@@ -179,7 +179,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const authenticateWalletMercure = async (userId: number) => {
     try {
-      const url = `http://51.83.99.222:8096/api/mercure/auth?topic=/user/${userId}/wallet`;
+      const url = `${process.env.NEXT_PUBLIC_API_URL}/api/mercure/auth?topic=/user/${userId}/wallet`;
       const res = await fetch(url, {
         headers: {
           Authorization: `Bearer ${token}`,
@@ -193,7 +193,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       const data = await res.json();
       return data.token;
     } catch (err) {
-      console.error("Wallet Mercure auth error:", err);
+      // console.error("Wallet Mercure auth error:", err);
       return null;
     }
   };
@@ -277,7 +277,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setToken(data.token);
       await fetchUserProfile(data.token);
     } catch (error) {
-      console.error("Login error:", error);
+      //  console.error("Login error:", error);
       throw error;
     } finally {
       setLoading(false);
@@ -345,7 +345,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       await startStripeCheckout(registrationData.email);
       return data;
     } catch (error) {
-      console.error("Registration error:", error);
+      //  console.error("Registration error:", error);
       throw error;
     } finally {
       setLoading(false);
@@ -410,7 +410,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
       return await response.json();
     } catch (error) {
-      console.error("Identity verification error:", error);
+      //  console.error("Identity verification error:", error);
       throw error;
     }
   };
@@ -441,7 +441,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
       return await response.json();
     } catch (error) {
-      console.error("Subscription error:", error);
+      //   console.error("Subscription error:", error);
       throw error;
     }
   };

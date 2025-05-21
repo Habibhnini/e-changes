@@ -37,7 +37,7 @@ export default function StripeSubscribeButton({
         await stripe.redirectToCheckout({ sessionId: data.sessionId });
       }
     } catch (err) {
-      console.error("Erreur pendant le paiement Stripe:", err);
+      // console.error("Erreur pendant le paiement Stripe:", err);
       alert(
         "Une erreur s'est produite lors de la tentative de paiement. Veuillez réessayer."
       );
