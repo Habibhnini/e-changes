@@ -8,6 +8,7 @@ import RegistrationStep1 from "../components/AuthForms/RegistrationStep1";
 import RegistrationStep2 from "../components/AuthForms/RegistrationStep2";
 import RegistrationStep3 from "../components/AuthForms/RegistrationStep3";
 import RegistrationStep4 from "../components/AuthForms/RegistrationStep4";
+import ForgotPasswordForm from "../components/AuthForms/ForgotPasswordForm"; // Add this import
 import apiClient from "../api/apiClient";
 
 export default function AuthPage() {
@@ -22,6 +23,10 @@ export default function AuthPage() {
   const [loginEmail, setLoginEmail] = useState("");
   const [loginPassword, setLoginPassword] = useState("");
   const [isLoading, setIsLoading] = useState(false);
+
+  // Forgot password state
+  const [resetEmail, setResetEmail] = useState("");
+  const [resetSuccess, setResetSuccess] = useState(false);
 
   // Registration state
   const [email, setEmail] = useState("");
@@ -65,6 +70,44 @@ export default function AuthPage() {
       setError("Email ou mot de passe invalide");
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  // Add forgot password handler
+  const handleForgotPasswordSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+
+    if (!resetEmail) {
+      setError("Veuillez saisir votre adresse e-mail");
+      return;
+    }
+
+    setIsLoading(true);
+    setError("");
+
+    try {
+      // Call your API to send reset email
+      await apiClient.forgotPassword(resetEmail);
+      setResetSuccess(true);
+    } catch (err) {
+      console.error("Forgot password error:", err);
+      setError(
+        err instanceof Error
+          ? err.message
+          : "Une erreur est survenue lors de l'envoi de l'e-mail"
+      );
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // Reset states when switching tabs
+  const handleTabChange = (tab: string) => {
+    setActiveTab(tab);
+    setError("");
+    setResetSuccess(false);
+    if (tab === "login") {
+      setResetEmail("");
     }
   };
 
@@ -185,29 +228,31 @@ export default function AuthPage() {
         {/* Right side - Form */}
         <div className="md:w-1/2 w-full  max-w-md">
           <div className="bg-white shadow-md rounded-xl overflow-hidden">
-            {/* Redesigned Tabs */}
-            <div className="flex p-6 bg-gray-50">
-              <button
-                className={`flex-1 py-2 px-4 rounded-md text-center font-medium transition-colors duration-200 cursor-pointer ${
-                  activeTab === "register"
-                    ? "text-white bg-teal-500"
-                    : "text-teal-600 bg-white border border-teal-500 hover:bg-teal-50"
-                }`}
-                onClick={() => setActiveTab("register")}
-              >
-                INSCRIPTION
-              </button>
-              <button
-                className={`flex-1 py-2 px-4 rounded-md text-center font-medium ml-2 transition-colors duration-200 cursor-pointer ${
-                  activeTab === "login"
-                    ? "text-white bg-teal-500"
-                    : "text-teal-600 bg-white border border-teal-500 hover:bg-teal-50"
-                }`}
-                onClick={() => setActiveTab("login")}
-              >
-                CONNEXION
-              </button>
-            </div>
+            {/* Redesigned Tabs - Only show for login/register, hide for forgot password */}
+            {activeTab !== "forgot-password" && (
+              <div className="flex p-6 bg-gray-50">
+                <button
+                  className={`flex-1 py-2 px-4 rounded-md text-center font-medium transition-colors duration-200 cursor-pointer ${
+                    activeTab === "register"
+                      ? "text-white bg-teal-500"
+                      : "text-teal-600 bg-white border border-teal-500 hover:bg-teal-50"
+                  }`}
+                  onClick={() => handleTabChange("register")}
+                >
+                  INSCRIPTION
+                </button>
+                <button
+                  className={`flex-1 py-2 px-4 rounded-md text-center font-medium ml-2 transition-colors duration-200 cursor-pointer ${
+                    activeTab === "login"
+                      ? "text-white bg-teal-500"
+                      : "text-teal-600 bg-white border border-teal-500 hover:bg-teal-50"
+                  }`}
+                  onClick={() => handleTabChange("login")}
+                >
+                  CONNEXION
+                </button>
+              </div>
+            )}
 
             {/* Login Form */}
             {activeTab === "login" && (
@@ -219,9 +264,22 @@ export default function AuthPage() {
                 handleLoginSubmit={handleLoginSubmit}
                 isLoading={isLoading}
                 error={error}
-                setActiveTab={setActiveTab}
+                setActiveTab={handleTabChange}
                 rememberMe={rememberMe}
                 setRememberMe={setRememberMe}
+              />
+            )}
+
+            {/* Forgot Password Form */}
+            {activeTab === "forgot-password" && (
+              <ForgotPasswordForm
+                email={resetEmail}
+                setEmail={setResetEmail}
+                handleSubmit={handleForgotPasswordSubmit}
+                isLoading={isLoading}
+                error={error}
+                success={resetSuccess}
+                setActiveTab={handleTabChange}
               />
             )}
 
@@ -242,7 +300,7 @@ export default function AuthPage() {
                 setReferralCode={setReferralCode}
                 handleRegistrationNext={handleRegistrationNext}
                 error={error}
-                setActiveTab={setActiveTab}
+                setActiveTab={handleTabChange}
               />
             )}
 
@@ -253,7 +311,7 @@ export default function AuthPage() {
                 handleRegistrationNext={handleRegistrationNext}
                 handleRegistrationBack={handleRegistrationBack}
                 error={error}
-                setActiveTab={setActiveTab}
+                setActiveTab={handleTabChange}
               />
             )}
 
@@ -275,7 +333,7 @@ export default function AuthPage() {
                 handleRegistrationBack={handleRegistrationBack}
                 isLoading={isLoading}
                 error={error}
-                setActiveTab={setActiveTab}
+                setActiveTab={handleTabChange}
                 photoId={photoId}
                 handleFileUpload={handleFileUpload}
               />

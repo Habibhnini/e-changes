@@ -73,7 +73,14 @@ const LoginForm: React.FC<LoginFormProps> = ({
           placeholder="Mot de passe"
         />
         <div className="text-right mt-1">
-          <a href="#" className="text-sm text-teal-500 hover:text-teal-400">
+          <a
+            href="#"
+            onClick={(e) => {
+              e.preventDefault();
+              setActiveTab("forgot-password");
+            }}
+            className="text-sm text-teal-500 hover:text-teal-400"
+          >
             Mot de passe oublié ?
           </a>
         </div>

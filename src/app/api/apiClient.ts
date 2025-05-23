@@ -29,6 +29,46 @@ interface ServiceDetail {
 
 // Let's update your ApiClient class with this type
 class ApiClient {
+  async forgotPassword(resetEmail: string): Promise<void> {
+    const formData = new FormData();
+    formData.append("email", resetEmail);
+
+    const response = await fetch(
+      `${process.env.NEXT_PUBLIC_API_URL}/api/request-password-reset`,
+      {
+        method: "POST",
+        body: formData,
+      }
+    );
+
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(
+        error.error ||
+          "Une erreur est survenue lors de la demande de réinitialisation."
+      );
+    }
+  }
+  // apiClient.ts
+
+  async resetPassword(token: string, password: string): Promise<void> {
+    const formData = new FormData();
+    formData.append("token", token);
+    formData.append("password", password);
+
+    const response = await fetch("http://localhost:8000/api/reset-password", {
+      method: "POST",
+      body: formData,
+    });
+
+    if (!response.ok) {
+      const data = await response.json();
+      throw new Error(
+        data.error || "Échec de la réinitialisation du mot de passe."
+      );
+    }
+  }
+
   private getToken(): string | null {
     if (typeof window !== "undefined") {
       return localStorage.getItem("token");
