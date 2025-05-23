@@ -56,10 +56,13 @@ class ApiClient {
     formData.append("token", token);
     formData.append("password", password);
 
-    const response = await fetch("http://localhost:8000/api/reset-password", {
-      method: "POST",
-      body: formData,
-    });
+    const response = await fetch(
+      `${process.env.NEXT_PUBLIC_API_URL}/api/reset-password`,
+      {
+        method: "POST",
+        body: formData,
+      }
+    );
 
     if (!response.ok) {
       const data = await response.json();
