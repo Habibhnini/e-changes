@@ -40,9 +40,13 @@ const TransactionDetails: React.FC<TransactionDetailsProps> = ({
   const [newAmount, setNewAmount] = useState<string>("");
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<boolean>(false);
+  const [showDepublishConfirm, setShowDepublishConfirm] = useState(false);
+  const [isDepublishing, setIsDepublishing] = useState(false);
+
   const isSeller = currentUser?.id === service.vendor.id;
   const isFinalized = transaction.status === "completed";
   const [isCompleteModalOpen, setIsCompleteModalOpen] = useState(false);
+
   const statusColorMap: Record<string, string> = {
     created: "bg-gray-200 text-gray-800",
     negotiation: "bg-yellow-100 text-yellow-700",
@@ -60,6 +64,30 @@ const TransactionDetails: React.FC<TransactionDetailsProps> = ({
   const hasValidated =
     (isSeller && transaction.sellerValidated) ||
     (!isSeller && transaction.buyerValidated);
+
+  // Success notification state
+  const [successNotification, setSuccessNotification] = useState<{
+    message: string;
+    isVisible: boolean;
+  }>({
+    message: "",
+    isVisible: false,
+  });
+
+  // Helper function to show success message
+  const showSuccess = (message: string) => {
+    setSuccessNotification({ message, isVisible: true });
+    setTimeout(() => {
+      setSuccessNotification({ message: "", isVisible: false });
+    }, 3000);
+  };
+
+  // Helper function to show error message
+  const showError = (message: string) => {
+    setError(message);
+    setTimeout(() => setError(null), 5000);
+  };
+
   const handleCompleteTransaction = async () => {
     try {
       const res = await fetch(`/api/transactions/${transactionId}/complete`, {
@@ -76,7 +104,37 @@ const TransactionDetails: React.FC<TransactionDetailsProps> = ({
       });
       setIsCompleteModalOpen(false);
     } catch (err) {
-      setError("Impossible de finaliser la transaction");
+      showError("Impossible de finaliser la transaction");
+    }
+  };
+
+  // Depublish service handler
+  const handleDepublishService = async () => {
+    if (!service?.id) return;
+
+    setIsDepublishing(true);
+    try {
+      const response = await fetch(`/api/service/${service.id}/depublish`, {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+        },
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || "Erreur lors de la dépublication");
+      }
+
+      // Update service status locally if needed
+      service.status = "unpublished";
+
+      showSuccess(`Service "${service.title}" dépublié avec succès!`);
+    } catch (error: any) {
+      showError(error.message || "Erreur lors de la dépublication du service");
+    } finally {
+      setIsDepublishing(false);
+      setShowDepublishConfirm(false);
     }
   };
 
@@ -84,6 +142,7 @@ const TransactionDetails: React.FC<TransactionDetailsProps> = ({
     if (transaction?.energyAmount != null) {
       setNewAmount(transaction.energyAmount.toString());
     }
+    console.log(service);
   }, [transaction]);
 
   const handleValidate = async () => {
@@ -103,9 +162,10 @@ const TransactionDetails: React.FC<TransactionDetailsProps> = ({
         buyerValidated: data.buyerValidated,
       });
     } catch (err) {
-      setError("Impossible de valider la transaction");
+      showError("Impossible de valider la transaction");
     }
   };
+
   const handleCancel = async () => {
     try {
       const res = await fetch(`/api/transactions/${transactionId}/cancel`, {
@@ -121,14 +181,14 @@ const TransactionDetails: React.FC<TransactionDetailsProps> = ({
         status: data.status,
       });
     } catch (err) {
-      setError("Impossible d'annuler la transaction");
+      showError("Impossible d'annuler la transaction");
     }
   };
 
   const handleChangeAmount = async () => {
     const amt = +newAmount;
     if (!amt || isNaN(amt) || amt <= 0) {
-      setError("Veuillez saisir un montant valide");
+      showError("Veuillez saisir un montant valide");
       return;
     }
     try {
@@ -149,10 +209,10 @@ const TransactionDetails: React.FC<TransactionDetailsProps> = ({
       setSuccess(true);
       setTimeout(() => setSuccess(false), 3000);
     } catch (err) {
-      // console.error(err);
-      // setError("Impossible de mettre à jour le montant");
+      // Error handling
     }
   };
+
   useEffect(() => {
     if (success) {
       const timer = setTimeout(() => setSuccess(false), 3000);
@@ -172,7 +232,79 @@ const TransactionDetails: React.FC<TransactionDetailsProps> = ({
   const isNarrowDesktop = width >= 1024 && width < 1290;
 
   return (
-    <div className="p-4">
+    <div className="p-4 relative">
+      {/* Success Notification */}
+      {successNotification.isVisible && (
+        <div className="absolute top-2 right-2 z-50 max-w-sm">
+          <div className="bg-green-500 text-white px-4 py-2 rounded-lg shadow-lg flex items-center text-sm">
+            <svg
+              className="w-4 h-4 mr-2"
+              fill="currentColor"
+              viewBox="0 0 20 20"
+            >
+              <path
+                fillRule="evenodd"
+                d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z"
+                clipRule="evenodd"
+              />
+            </svg>
+            <span>{successNotification.message}</span>
+          </div>
+        </div>
+      )}
+
+      {/* Error Notification */}
+      {error && (
+        <div className="absolute top-2 right-2 z-50 max-w-sm">
+          <div className="bg-red-500 text-white px-4 py-2 rounded-lg shadow-lg flex items-center text-sm">
+            <svg
+              className="w-4 h-4 mr-2"
+              fill="currentColor"
+              viewBox="0 0 20 20"
+            >
+              <path
+                fillRule="evenodd"
+                d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z"
+                clipRule="evenodd"
+              />
+            </svg>
+            <span>{error}</span>
+          </div>
+        </div>
+      )}
+
+      {/* Depublish Confirmation Modal */}
+      {showDepublishConfirm && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[60]">
+          <div className="bg-white rounded-lg p-6 max-w-md mx-4">
+            <h3 className="text-lg font-semibold mb-4">
+              Confirmer la dépublication
+            </h3>
+            <p className="text-gray-600 mb-6">
+              Êtes-vous sûr de vouloir dépublier le service{" "}
+              <span className="font-semibold">"{service.title}"</span> ? Il ne
+              sera plus visible par les autres utilisateurs.
+            </p>
+            <div className="flex justify-end gap-3">
+              <button
+                onClick={() => setShowDepublishConfirm(false)}
+                className="px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50"
+                disabled={isDepublishing}
+              >
+                Annuler
+              </button>
+              <button
+                onClick={handleDepublishService}
+                className="px-4 py-2 bg-orange-500 text-white rounded-md hover:bg-orange-600"
+                disabled={isDepublishing}
+              >
+                {isDepublishing ? "Dépublication..." : "Dépublier"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       <h2 className="font-medium text-lg mb-3">À propos de cet échange</h2>
 
       {/* Transaction Status */}
@@ -219,7 +351,6 @@ const TransactionDetails: React.FC<TransactionDetailsProps> = ({
           }`}
         >
           <div className="font-medium mb-2">Modifier le montant</div>
-          {error && <div className="mb-2 text-red-600 text-sm">{error}</div>}
 
           <div className="flex space-x-2">
             <input
@@ -263,6 +394,22 @@ const TransactionDetails: React.FC<TransactionDetailsProps> = ({
       <div className="mb-4">
         <h3 className="font-medium">{service.title}</h3>
         <p className="text-sm text-gray-400 mt-1">{service.fullDescription}</p>
+
+        {/* Service Status Display */}
+        {isSeller && (
+          <div className="mt-2">
+            <span className="text-xs text-gray-500">Statut du service: </span>
+            <span
+              className={`text-xs px-2 py-1 rounded-full ${
+                service.status === "published"
+                  ? "bg-green-100 text-green-800"
+                  : "bg-gray-100 text-gray-800"
+              }`}
+            >
+              {service.status === "published" ? "Publié" : "Dépublié"}
+            </span>
+          </div>
+        )}
       </div>
 
       {/* Additional Details */}
@@ -281,7 +428,6 @@ const TransactionDetails: React.FC<TransactionDetailsProps> = ({
         </div>
       </div>
 
-      {/* Actions */}
       {/* Actions */}
       <div className="mt-6 border-t pt-4 border-gray-300">
         <div
@@ -330,8 +476,25 @@ const TransactionDetails: React.FC<TransactionDetailsProps> = ({
               </button>
             )}
 
-          {/* COMPLETER (PAYER) BUTTON */}
+          {/* DÉPUBLIER BUTTON - Only for sellers with published services */}
+          {isSeller && service?.id && service.status !== "unpublished" && (
+            <button
+              onClick={() => setShowDepublishConfirm(true)}
+              className="px-4 py-2 text-sm rounded-lg bg-orange-500 text-white hover:bg-orange-600 cursor-pointer flex items-center gap-1"
+              disabled={isDepublishing}
+            >
+              <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
+                <path
+                  fillRule="evenodd"
+                  d="M13.477 14.89A6 6 0 015.11 6.524l8.367 8.368zm1.414-1.414L6.524 5.11a6 6 0 018.367 8.367zM18 10a8 8 0 11-16 0 8 8 0 0116 0z"
+                  clipRule="evenodd"
+                />
+              </svg>
+              {isDepublishing ? "Dépublication..." : "Dépublier"}
+            </button>
+          )}
 
+          {/* COMPLETER (PAYER) BUTTON */}
           {transaction.status === "validation" &&
             currentUser?.id === transaction.buyer?.id && (
               <button
@@ -343,6 +506,7 @@ const TransactionDetails: React.FC<TransactionDetailsProps> = ({
             )}
         </div>
       </div>
+
       <ConfirmCompleteModal
         isOpen={isCompleteModalOpen}
         onClose={() => setIsCompleteModalOpen(false)}

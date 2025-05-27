@@ -12,6 +12,8 @@ import ProgressTimeline from "./ProgressTimeline";
 interface Transaction {
   id: number;
   serviceTitle: string;
+  serviceId?: number;
+  serviceStatus?: string;
   energyAmount: number;
   status: string;
   createdAt: string;
@@ -195,6 +197,13 @@ export default function TransactionsPage() {
   const [showStatusModal, setShowStatusModal] = useState(false);
   const [selectedStatus, setSelectedStatus] = useState<string | null>(null);
 
+  // Depublish confirmation state
+  const [showDepublishConfirm, setShowDepublishConfirm] = useState(false);
+  const [serviceToDepublish, setServiceToDepublish] = useState<{
+    id: number;
+    title: string;
+  } | null>(null);
+
   // New state for notifications
   const [errorNotification, setErrorNotification] = useState<{
     message: string;
@@ -239,9 +248,53 @@ export default function TransactionsPage() {
     } catch (error: any) {
       const errorMessage =
         error?.response?.data?.error ||
-        error?.response?.data?.message || // <- THIS line reads the correct key
+        error?.response?.data?.message ||
         "Erreur lors de la complétion de la transaction.";
       showError(errorMessage);
+    }
+  };
+
+  // Depublish service handler
+  const handleDepublishService = (serviceId: number, serviceTitle: string) => {
+    setServiceToDepublish({ id: serviceId, title: serviceTitle });
+    setShowDepublishConfirm(true);
+  };
+
+  const confirmDepublish = async () => {
+    if (!serviceToDepublish) return;
+
+    try {
+      const response = await fetch(
+        `/api/service/${serviceToDepublish.id}/depublish`,
+        {
+          method: "PATCH",
+          headers: {
+            "Content-Type": "application/json",
+          },
+        }
+      );
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || "Erreur lors de la dépublication");
+      }
+
+      // Update local transaction state to reflect service status change
+      const updatedTransactions = transactions.map((transaction) =>
+        transaction.serviceId === serviceToDepublish.id
+          ? { ...transaction, serviceStatus: "unpublished" }
+          : transaction
+      );
+
+      setTransactions(updatedTransactions);
+      showSuccess(
+        `Service "${serviceToDepublish.title}" dépublié avec succès!`
+      );
+    } catch (error: any) {
+      showError(error.message || "Erreur lors de la dépublication du service");
+    } finally {
+      setShowDepublishConfirm(false);
+      setServiceToDepublish(null);
     }
   };
 
@@ -366,10 +419,6 @@ export default function TransactionsPage() {
 
       setTransactions(updatedTransactions);
     } catch (error: any) {
-      /* console.error(
-        "Error loading transactions:",
-        error?.response?.data?.error
-      ); */
       const errorMessage =
         error?.response?.data?.message ||
         error?.response?.data?.error ||
@@ -397,7 +446,6 @@ export default function TransactionsPage() {
         setTransactions(updatedTransactions);
         showSuccess("Transaction annulée avec succès.");
       } catch (error: any) {
-        //  console.error("Error loading transactions:", error);
         const errorMessage =
           error?.response?.data?.message ||
           error?.response?.data?.error ||
@@ -440,6 +488,41 @@ export default function TransactionsPage() {
           setSuccessNotification({ message: "", isVisible: false })
         }
       />
+
+      {/* Depublish Confirmation Modal */}
+      {showDepublishConfirm && serviceToDepublish && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[60]">
+          <div className="bg-white rounded-lg p-6 max-w-md mx-4">
+            <h3 className="text-lg font-semibold mb-4">
+              Confirmer la dépublication
+            </h3>
+            <p className="text-gray-600 mb-6">
+              Êtes-vous sûr de vouloir dépublier le service{" "}
+              <span className="font-semibold">
+                "{serviceToDepublish.title}"
+              </span>{" "}
+              ? Il ne sera plus visible par les autres utilisateurs.
+            </p>
+            <div className="flex justify-end gap-3">
+              <button
+                onClick={() => {
+                  setShowDepublishConfirm(false);
+                  setServiceToDepublish(null);
+                }}
+                className="px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50"
+              >
+                Annuler
+              </button>
+              <button
+                onClick={confirmDepublish}
+                className="px-4 py-2 bg-orange-500 text-white rounded-md hover:bg-orange-600"
+              >
+                Dépublier
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       <div className="container mx-auto px-4 py-8">
         <div className="mb-6">
@@ -700,41 +783,35 @@ export default function TransactionsPage() {
                               </button>
                             )}
 
-                          {/* ÉCHOUER */}
-                          {["success", "delivery"].includes(
-                            transaction.status
-                          ) && (
-                            <button
-                              onClick={(e) => {
-                                if (
-                                  confirm(
-                                    "Confirmez-vous l'échec de cette transaction ?"
-                                  )
-                                ) {
-                                  handleUpdateStatus(
-                                    transaction.id,
-                                    "failure",
-                                    e
+                          {/* DÉPUBLIER SERVICE */}
+                          {transaction.role === "seller" &&
+                            transaction.serviceId &&
+                            transaction.serviceStatus == "published" && (
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleDepublishService(
+                                    transaction.serviceId!,
+                                    transaction.serviceTitle
                                   );
-                                }
-                              }}
-                              title="Marquer cette transaction comme échouée"
-                              className="inline-flex items-center px-2 py-1 text-xs font-medium bg-red-500 text-white rounded hover:bg-red-600 transition-colors"
-                            >
-                              <svg
-                                className="w-3 h-3 mr-1"
-                                fill="currentColor"
-                                viewBox="0 0 20 20"
+                                }}
+                                title="Dépublier ce service"
+                                className="inline-flex items-center px-2 py-1 text-xs font-medium bg-orange-500 text-white rounded hover:bg-orange-600 transition-colors"
                               >
-                                <path
-                                  fillRule="evenodd"
-                                  d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z"
-                                  clipRule="evenodd"
-                                />
-                              </svg>
-                              Échouer
-                            </button>
-                          )}
+                                <svg
+                                  className="w-3 h-3 mr-1"
+                                  fill="currentColor"
+                                  viewBox="0 0 20 20"
+                                >
+                                  <path
+                                    fillRule="evenodd"
+                                    d="M13.477 14.89A6 6 0 015.11 6.524l8.367 8.368zm1.414-1.414L6.524 5.11a6 6 0 018.367 8.367zM18 10a8 8 0 11-16 0 8 8 0 0116 0z"
+                                    clipRule="evenodd"
+                                  />
+                                </svg>
+                                Dépublier
+                              </button>
+                            )}
 
                           {/* ANNULER */}
                           {["created", "negotiation"].includes(

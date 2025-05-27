@@ -10,7 +10,7 @@ import RegistrationStep3 from "../components/AuthForms/RegistrationStep3";
 import RegistrationStep4 from "../components/AuthForms/RegistrationStep4";
 import ForgotPasswordForm from "../components/AuthForms/ForgotPasswordForm"; // Add this import
 import apiClient from "../api/apiClient";
-
+import RegistrationConfirmation from "../components/AuthForms/RegistrationConfirmation";
 export default function AuthPage() {
   const [activeTab, setActiveTab] = useState("login");
   const [registrationStep, setRegistrationStep] = useState(1);
@@ -45,7 +45,7 @@ export default function AuthPage() {
   // Files for identity verification
   const [photoId, setPhotoId] = useState<File | null>(null);
   const { user, loading } = useAuth(); // your auth context
-
+  const [registrationSuccess, setRegistrationSuccess] = useState(false);
   const { login, register, uploadIdentityDocuments, completeSubscription } =
     useAuth();
   const router = useRouter();
@@ -111,8 +111,13 @@ export default function AuthPage() {
     setActiveTab(tab);
     setError("");
     setResetSuccess(false);
+    setRegistrationSuccess(false); // Add this line
     if (tab === "login") {
       setResetEmail("");
+    }
+    // Reset registration step when switching away from register
+    if (tab !== "register") {
+      setRegistrationStep(1);
     }
   };
 
@@ -192,13 +197,8 @@ export default function AuthPage() {
       // Use the API client instead of direct fetch
       const result = await apiClient.registerWithFormData(formData);
 
-      // Handle successful registration
-      if (result.token) {
-        localStorage.setItem("token", result.token);
-        window.location.href = "/explorer";
-      } else {
-        throw new Error("No token received");
-      }
+      // Instead of redirecting immediately, show confirmation page
+      setRegistrationSuccess(true);
     } catch (err: any) {
       if (err.status === 409) {
         setError("Cet email est déjà utilisé");
@@ -211,7 +211,6 @@ export default function AuthPage() {
       setIsLoading(false);
     }
   };
-
   return (
     <div
       className="min-h-[92.9vh] flex items-center bg-teal-500  px-4 sm:px-6 lg:px-8"
@@ -259,7 +258,6 @@ export default function AuthPage() {
                 </button>
               </div>
             )}
-
             {/* Login Form */}
             {activeTab === "login" && (
               <LoginForm
@@ -275,7 +273,6 @@ export default function AuthPage() {
                 setRememberMe={setRememberMe}
               />
             )}
-
             {/* Forgot Password Form */}
             {activeTab === "forgot-password" && (
               <ForgotPasswordForm
@@ -288,60 +285,69 @@ export default function AuthPage() {
                 setActiveTab={handleTabChange}
               />
             )}
-
             {/* Registration Steps */}
-            {activeTab === "register" && registrationStep === 1 && (
-              <RegistrationStep1
-                firstName={firstName}
-                setFirstName={setFirstName}
-                lastName={lastName}
-                setLastName={setLastName}
-                city={city}
-                setCity={setCity}
+            {activeTab === "register" &&
+              !registrationSuccess &&
+              registrationStep === 1 && (
+                <RegistrationStep1
+                  firstName={firstName}
+                  setFirstName={setFirstName}
+                  lastName={lastName}
+                  setLastName={setLastName}
+                  city={city}
+                  setCity={setCity}
+                  email={email}
+                  setEmail={setEmail}
+                  password={password}
+                  setPassword={setPassword}
+                  referralCode={referralCode}
+                  setReferralCode={setReferralCode}
+                  handleRegistrationNext={handleRegistrationNext}
+                  error={error}
+                  setActiveTab={handleTabChange}
+                />
+              )}
+            {activeTab === "register" &&
+              !registrationSuccess &&
+              registrationStep === 2 && (
+                <RegistrationStep2
+                  acceptTerms={acceptTerms}
+                  setAcceptTerms={setAcceptTerms}
+                  handleRegistrationNext={handleRegistrationNext}
+                  handleRegistrationBack={handleRegistrationBack}
+                  error={error}
+                  setActiveTab={handleTabChange}
+                />
+              )}
+            {activeTab === "register" &&
+              !registrationSuccess &&
+              registrationStep === 3 && (
+                <RegistrationStep4
+                  country={country}
+                  setCountry={setCountry}
+                  addressLine1={addressLine1}
+                  setAddressLine1={setAddressLine1}
+                  addressLine2={addressLine2}
+                  setAddressLine2={setAddressLine2}
+                  city={city}
+                  setCity={setCity}
+                  postalCode={postalCode}
+                  setPostalCode={setPostalCode}
+                  region={region}
+                  setRegion={setRegion}
+                  handleRegistrationFinish={handleRegistrationFinish}
+                  handleRegistrationBack={handleRegistrationBack}
+                  isLoading={isLoading}
+                  error={error}
+                  setActiveTab={handleTabChange}
+                  photoId={photoId}
+                  handleFileUpload={handleFileUpload}
+                />
+              )}
+            {activeTab === "register" && registrationSuccess && (
+              <RegistrationConfirmation
                 email={email}
-                setEmail={setEmail}
-                password={password}
-                setPassword={setPassword}
-                referralCode={referralCode}
-                setReferralCode={setReferralCode}
-                handleRegistrationNext={handleRegistrationNext}
-                error={error}
                 setActiveTab={handleTabChange}
-              />
-            )}
-
-            {activeTab === "register" && registrationStep === 2 && (
-              <RegistrationStep2
-                acceptTerms={acceptTerms}
-                setAcceptTerms={setAcceptTerms}
-                handleRegistrationNext={handleRegistrationNext}
-                handleRegistrationBack={handleRegistrationBack}
-                error={error}
-                setActiveTab={handleTabChange}
-              />
-            )}
-
-            {activeTab === "register" && registrationStep === 3 && (
-              <RegistrationStep4
-                country={country}
-                setCountry={setCountry}
-                addressLine1={addressLine1}
-                setAddressLine1={setAddressLine1}
-                addressLine2={addressLine2}
-                setAddressLine2={setAddressLine2}
-                city={city}
-                setCity={setCity}
-                postalCode={postalCode}
-                setPostalCode={setPostalCode}
-                region={region}
-                setRegion={setRegion}
-                handleRegistrationFinish={handleRegistrationFinish}
-                handleRegistrationBack={handleRegistrationBack}
-                isLoading={isLoading}
-                error={error}
-                setActiveTab={handleTabChange}
-                photoId={photoId}
-                handleFileUpload={handleFileUpload}
               />
             )}
           </div>

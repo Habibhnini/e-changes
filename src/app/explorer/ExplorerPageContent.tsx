@@ -156,6 +156,9 @@ export default function ExplorerPageContent() {
         );
       }
 
+      // Add status filter to only show published services
+      params.append("status", "published");
+
       // Sort mapping
       if (selectedSort) {
         params.append("sort", selectedSort);

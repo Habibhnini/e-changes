@@ -33,7 +33,10 @@ export default function ProfilePage() {
   const { isActive, loading: subscriptionLoading } = useSubscriptionStatus();
   const imageInputRef = useRef<HTMLInputElement>(null);
   const [subscription, setSubscription] = useState<any | null>(null);
-
+  const [selectedService, setSelectedService] = useState<Service | null>(null);
+  const [modalMode, setModalMode] = useState<"create" | "view" | "edit">(
+    "create"
+  );
   const [notification, setNotification] = useState({
     show: false,
     message: "",
@@ -157,11 +160,60 @@ export default function ProfilePage() {
     ],
   };
 
-  const openModal = (type: "service" | "bien") => {
+  const openModal = (
+    type: "service" | "bien",
+    mode: "create" | "view" | "edit" = "create",
+    service?: Service
+  ) => {
     setModalType(type);
+    setModalMode(mode);
+    setSelectedService(service || null);
     setShowModal(true);
   };
-  const closeModal = () => setShowModal(false);
+
+  const closeModal = () => {
+    setShowModal(false);
+    setSelectedService(null);
+    setModalMode("create");
+  };
+
+  const handleServiceClick = (service: Service) => {
+    const serviceType = service.type as "service" | "bien";
+    openModal(serviceType, "view", service);
+  };
+
+  const handleDepublished = async () => {
+    // Refresh the services list
+    await handleCreated();
+  };
+  const handleUpdated = async () => {
+    console.log("=== PROFILE PAGE UPDATE CALLBACK ===");
+    // Refresh the services/biens data
+    try {
+      const servicesResponse = await fetch(
+        `/api/service?vendorId=${user?.id || ""}`
+      );
+      const servicesData = await servicesResponse.json();
+
+      if (servicesData && servicesData.services) {
+        const services = servicesData.services.filter(
+          (s: { type: string }) => s.type === "service"
+        );
+        const biens = servicesData.services.filter(
+          (s: { type: string }) => s.type === "bien"
+        );
+
+        console.log("Updated services count:", services.length);
+        console.log("Updated biens count:", biens.length);
+
+        setUserServices(mapWithImages(services));
+        setUserBiens(mapWithImages(biens));
+      }
+    } catch (err) {
+      console.error("Error refreshing services after update:", err);
+    }
+  };
+
   const mapWithImages = (items: any[]) =>
     items.map((item) => ({
       ...item,
@@ -356,6 +408,7 @@ export default function ProfilePage() {
                             <div
                               key={service.id}
                               className="w-72 ml-2 group transform transition-transform duration-300 hover:scale-[1.03]"
+                              onClick={() => handleServiceClick(service)}
                             >
                               <div className="w-full h-48 bg-white rounded-lg mb-2 transition-all duration-300 group-hover:shadow-lg relative overflow-hidden border border-gray-200">
                                 {/* Placeholder image */}
@@ -451,17 +504,31 @@ export default function ProfilePage() {
                             <div
                               key={bien.id}
                               className="w-72 ml-2 group transform transition-transform duration-300 hover:scale-[1.03]"
+                              onClick={() => handleServiceClick(bien)}
                             >
                               <div className="w-full h-48 bg-white rounded-lg mb-2 transition-all duration-300 group-hover:shadow-lg relative overflow-hidden border border-gray-200">
                                 {/* Placeholder image */}
                                 <div className="flex items-center justify-center h-full w-full ">
-                                  <Image
-                                    src="/logo.jpg"
-                                    alt="Logo placeholder"
-                                    width={120}
-                                    height={120}
-                                    className="object-contain transition-transform duration-300 group-hover:scale-110"
-                                  />
+                                  {bien.primaryImageUrl ? (
+                                    <Image
+                                      src={getFullImageUrl(
+                                        bien.primaryImageUrl
+                                      )}
+                                      alt={bien.title}
+                                      fill
+                                      className="object-cover rounded-lg group-hover:scale-105 transition-transform duration-300"
+                                    />
+                                  ) : (
+                                    <div className="flex items-center justify-center h-full w-full bg-gray-100">
+                                      <Image
+                                        src="/logo.jpg"
+                                        alt="Logo placeholder"
+                                        width={120}
+                                        height={120}
+                                        className="object-contain"
+                                      />
+                                    </div>
+                                  )}
                                 </div>
 
                                 {/* Permanent partial gradient overlay at the bottom */}
@@ -525,6 +592,10 @@ export default function ProfilePage() {
           vendorId={user.id}
           onClose={closeModal}
           onCreated={handleCreated}
+          onUpdated={handleUpdated} // Make sure this is handleUpdated, not handleCreated
+          onDepublished={handleDepublished}
+          mode={modalMode}
+          serviceData={selectedService}
         />
       )}
       {notification.show && (

@@ -27,12 +27,12 @@ export default function Home() {
       </div>
 
       {/* Main Content */}
-      <div className="mx-auto px-14 py-8">
+      <div className="mx-auto px-4 md:px-14 py-8">
         {/* First Section */}
-        <h1 className="text-4xl md:text-4xl font-bold text-[#38AC8E] mb-6">
+        <h1 className="text-3xl md:text-4xl font-bold text-[#38AC8E] mb-6">
           Aller vers un monde d'échanges...
         </h1>
-        <p className="text-2xl text-gray-700 mb-6 font-semibold">
+        <p className="text-xl md:text-2xl text-gray-700 mb-6 font-semibold">
           De services - mise à disposition de compétences, de connaissances...
         </p>
 
@@ -84,22 +84,60 @@ export default function Home() {
           ))}
         </div>
 
-        <p className="text-2xl text-gray-700 mb-6 font-semibold">
+        <p className="text-xl md:text-2xl text-gray-700 mb-6 font-semibold">
           De biens - mise à disposition d'un bien, réalisation d'un objet...
         </p>
 
-        {/* Service Cards - Second Row */}
-        <div className="flex flex-row justify-center space-x-48">
+        {/* Service Cards - Second Row - Desktop spacing, Mobile grid */}
+        <div className="hidden lg:flex flex-row justify-center space-x-48 mb-8">
           {[
             {
               name: "Biens consommables",
               image: "/achat.png",
-              alt: "House cleaning service",
+              alt: "Consumable goods",
             },
             {
               name: "Biens durables",
               image: "/vente.png",
-              alt: "Manual work service",
+              alt: "Durable goods",
+            },
+          ].map((service, index) => (
+            <Link
+              key={index}
+              href={{
+                pathname: "/explorer",
+                query: { category: encodeURIComponent(service.name) },
+              }}
+              passHref
+            >
+              <div className="flex flex-col items-center cursor-pointer">
+                <div className="w-full aspect-square rounded-2xl overflow-hidden mb-4 shadow-md">
+                  <img
+                    src={service.image}
+                    alt={service.alt}
+                    className="w-full h-full object-cover"
+                  />
+                </div>
+                <h3 className="text-center font-semibold text-gray-800 text-lg">
+                  {service.name}
+                </h3>
+              </div>
+            </Link>
+          ))}
+        </div>
+
+        {/* Mobile version - Grid layout */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 mb-8 max-w-2xl mx-auto lg:hidden">
+          {[
+            {
+              name: "Biens consommables",
+              image: "/achat.png",
+              alt: "Consumable goods",
+            },
+            {
+              name: "Biens durables",
+              image: "/vente.png",
+              alt: "Durable goods",
             },
           ].map((service, index) => (
             <Link
@@ -127,7 +165,7 @@ export default function Home() {
         </div>
 
         {/* Second Section */}
-        <h2 className="text-2xl md:text-3xl text-[#38AC8E] mb-6">
+        <h2 className="text-xl md:text-2xl lg:text-3xl text-[#38AC8E] mb-6">
           ... Dans lequel la "monnaie d'échange" est de l'énergie
         </h2>
 
@@ -135,7 +173,7 @@ export default function Home() {
         <div className="bg-black w-full h-64 md:h-96 mb-12"></div>
 
         {/* How It Works Section */}
-        <h2 className="text-2xl md:text-3xl font-semibold text-black mb-6">
+        <h2 className="text-xl md:text-2xl lg:text-3xl font-semibold text-black mb-6">
           Comment ça marche ?
         </h2>
         <p className="text-gray-700 mb-8 font-semibold">
@@ -150,33 +188,33 @@ export default function Home() {
               title: "Cherchez un service",
               description:
                 "Recherchez parmi tous les services, ce dont vous avez besoin",
-              image: "/step1.png", // You'll replace this
+              image: "/step1.png",
               alt: "Search for a service",
             },
             {
               title: "Communiquez avec l'e-changeur",
               description:
                 "Accédez à l'interface de messagerie afin d'expliquer et confirmer votre besoin",
-              image: "/step2.png", // You'll replace this
+              image: "/step2.png",
               alt: "Communicate with exchanger",
             },
             {
               title: "Et voilà !",
               description:
                 "L'e-changeur rend le service ou échange le bien et la somme d'énergie vous est débitée",
-              image: "/step3.png", // You'll replace this
+              image: "/step3.png",
               alt: "Service completed",
             },
           ].map((step, index) => (
             <div key={index} className="flex flex-col items-center text-center">
-              <div className="w-48 h-48 rounded-full bg-white flex items-center justify-center mb-6 relative overflow-hidden shadow-lg">
+              <div className="w-32 h-32 md:w-48 md:h-48 rounded-full bg-white flex items-center justify-center mb-6 relative overflow-hidden shadow-lg">
                 <img
                   src={step.image}
                   alt={step.alt}
-                  className="w-40 h-40 object-contain"
+                  className="w-24 h-24 md:w-40 md:h-40 object-contain"
                 />
               </div>
-              <h3 className="text-xl font-bold text-gray-800 mb-3">
+              <h3 className="text-lg md:text-xl font-bold text-gray-800 mb-3">
                 {step.title}
               </h3>
               <p className="text-gray-600 text-sm leading-relaxed max-w-xs">
@@ -187,31 +225,31 @@ export default function Home() {
         </div>
 
         {/* Search Section */}
-        <div className="py-16 px-4">
+        <div className="py-8 md:py-16 px-0">
           <div className="max-w-7xl mx-auto">
             {/* Main Title */}
-            <h2 className="text-3xl md:text-4xl font-bold text-center text-gray-800 mb-16 tracking-wide">
+            <h2 className="text-2xl md:text-3xl lg:text-4xl font-bold text-center text-gray-800 mb-8 md:mb-16 tracking-wide">
               UN ETAT D'ÊTRE ET UN RÉSEAU HUMAIN ET RÉEL
             </h2>
 
             {/* Content Section */}
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 md:gap-12 items-center">
               {/* Left side - Image */}
-              <div className="flex justify-center">
+              <div className="flex justify-center order-2 lg:order-1">
                 <img
                   src="/hands.png"
                   alt="Hands forming a heart - community connection"
-                  className="w-full max-w-md h-auto object-contain"
+                  className="w-full max-w-sm md:max-w-md h-auto object-contain"
                 />
               </div>
 
               {/* Right side - Content */}
-              <div className="space-y-6">
-                <h3 className="text-2xl md:text-3xl font-bold text-[#38AC8E] mb-6">
+              <div className="space-y-4 md:space-y-6 order-1 lg:order-2">
+                <h3 className="text-xl md:text-2xl lg:text-3xl font-bold text-[#38AC8E] mb-4 md:mb-6">
                   DES E-CHANGES BIENVEILLANTS ET PAISIBLES
                 </h3>
 
-                <p className="text-gray-700 text-lg leading-relaxed">
+                <p className="text-gray-700 text-base md:text-lg leading-relaxed">
                   Les discussions pour se mettre d'accord sur la nature de
                   l'echange et la quantité d'enerG se font paisiblement, avec
                   respect. L'accord entre les deux e-changeurs doit être juste

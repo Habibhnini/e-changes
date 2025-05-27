@@ -1,18 +1,35 @@
 "use client";
 import React, { useState, useEffect, useRef } from "react";
-import { IoClose, IoCloudUpload, IoTrash, IoImage } from "react-icons/io5";
+import {
+  IoClose,
+  IoCloudUpload,
+  IoTrash,
+  IoImage,
+  IoEye,
+  IoPencil,
+  IoStop,
+  IoPlay,
+} from "react-icons/io5";
+import Image from "next/image";
 
 interface ServiceModalProps {
   type: "service" | "bien";
   vendorId: number;
   onClose: () => void;
-  onCreated: () => void;
+  onCreated?: () => void;
+  onUpdated?: () => void;
+  onDepublished?: () => void;
+  mode: "create" | "view" | "edit";
+  serviceData?: any; // The service data when viewing/editing
 }
 
 interface ImagePreview {
-  file: File;
+  file?: File;
   preview: string;
   id: string;
+  isExisting?: boolean;
+  filename?: string;
+  url?: string;
 }
 
 const ServiceModal: React.FC<ServiceModalProps> = ({
@@ -20,7 +37,12 @@ const ServiceModal: React.FC<ServiceModalProps> = ({
   vendorId,
   onClose,
   onCreated,
+  onUpdated,
+  onDepublished,
+  mode,
+  serviceData,
 }) => {
+  const [currentMode, setCurrentMode] = useState(mode);
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [price, setPrice] = useState<number | "">("");
@@ -32,7 +54,43 @@ const ServiceModal: React.FC<ServiceModalProps> = ({
   const [primaryImageId, setPrimaryImageId] = useState<string>("");
   const [error, setError] = useState<string>("");
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [showDepublishConfirm, setShowDepublishConfirm] = useState(false);
+  const [showPublishConfirm, setShowPublishConfirm] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // Initialize form data when editing or viewing
+  useEffect(() => {
+    if ((currentMode === "view" || currentMode === "edit") && serviceData) {
+      setTitle(serviceData.title || "");
+      setDescription(serviceData.description || "");
+      setPrice(serviceData.price || "");
+      setCategoryId(serviceData.category?.id || "");
+
+      // Convert existing images to ImagePreview format
+      if (serviceData.images && serviceData.images.length > 0) {
+        const existingImages: ImagePreview[] = serviceData.images.map(
+          (img: any) => ({
+            id: img.id.toString(),
+            preview: `${process.env.NEXT_PUBLIC_API_URL}${img.url}`,
+            isExisting: true,
+            filename: img.filename,
+            url: img.url,
+          })
+        );
+        setImages(existingImages);
+
+        // Set primary image
+        const primaryImg = existingImages.find((img) =>
+          serviceData.images.find(
+            (si: any) => si.id.toString() === img.id && si.isPrimary
+          )
+        );
+        if (primaryImg) {
+          setPrimaryImageId(primaryImg.id);
+        }
+      }
+    }
+  }, [currentMode, serviceData]);
 
   useEffect(() => {
     async function fetchCategories() {
@@ -41,7 +99,9 @@ const ServiceModal: React.FC<ServiceModalProps> = ({
         if (!res.ok) throw new Error("Échec chargement catégories");
         const data = await res.json();
         setCategories(data.categories);
-      } catch (err) {}
+      } catch (err) {
+        console.error("Error fetching categories:", err);
+      }
     }
     fetchCategories();
   }, []);
@@ -49,16 +109,29 @@ const ServiceModal: React.FC<ServiceModalProps> = ({
   // Cleanup object URLs when component unmounts
   useEffect(() => {
     return () => {
-      images.forEach((img) => URL.revokeObjectURL(img.preview));
+      images.forEach((img) => {
+        if (!img.isExisting && img.preview) {
+          URL.revokeObjectURL(img.preview);
+        }
+      });
     };
   }, []);
 
-  const handleImageSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const files = Array.from(e.target.files || []);
+  const getFullImageUrl = (url: string): string => {
+    if (!url) return "/logo.jpg";
+    if (url.startsWith("http")) return url;
+    const apiUrl = process.env.NEXT_PUBLIC_API_URL || "";
+    return url.startsWith("/uploads/")
+      ? `${apiUrl}${url}`
+      : `${apiUrl}/uploads/services/${url}`;
+  };
 
+  const handleImageSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (currentMode === "view") return;
+
+    const files = Array.from(e.target.files || []);
     if (files.length === 0) return;
 
-    // Validate file types
     const validTypes = ["image/jpeg", "image/jpg", "image/png", "image/webp"];
     const invalidFiles = files.filter(
       (file) => !validTypes.includes(file.type)
@@ -69,14 +142,12 @@ const ServiceModal: React.FC<ServiceModalProps> = ({
       return;
     }
 
-    // Validate file sizes (max 5MB each)
     const oversizedFiles = files.filter((file) => file.size > 5 * 1024 * 1024);
     if (oversizedFiles.length > 0) {
       setError("Chaque image doit faire moins de 5MB");
       return;
     }
 
-    // Check total images limit (max 10)
     if (images.length + files.length > 10) {
       setError("Maximum 10 images autorisées");
       return;
@@ -88,31 +159,31 @@ const ServiceModal: React.FC<ServiceModalProps> = ({
       file,
       preview: URL.createObjectURL(file),
       id: Math.random().toString(36).substr(2, 9),
+      isExisting: false,
     }));
 
     setImages((prev) => [...prev, ...newImages]);
 
-    // Set first image as primary if no primary set
     if (images.length === 0 && newImages.length > 0) {
       setPrimaryImageId(newImages[0].id);
     }
 
-    // Reset file input
     if (fileInputRef.current) {
       fileInputRef.current.value = "";
     }
   };
 
   const removeImage = (imageId: string) => {
+    if (currentMode === "view") return;
+
     setImages((prev) => {
       const imageToRemove = prev.find((img) => img.id === imageId);
-      if (imageToRemove) {
+      if (imageToRemove && !imageToRemove.isExisting) {
         URL.revokeObjectURL(imageToRemove.preview);
       }
 
       const remaining = prev.filter((img) => img.id !== imageId);
 
-      // If removed image was primary, set first remaining as primary
       if (primaryImageId === imageId && remaining.length > 0) {
         setPrimaryImageId(remaining[0].id);
       } else if (remaining.length === 0) {
@@ -124,7 +195,64 @@ const ServiceModal: React.FC<ServiceModalProps> = ({
   };
 
   const setPrimary = (imageId: string) => {
+    if (currentMode === "view") return;
     setPrimaryImageId(imageId);
+  };
+
+  const handleDepublish = async () => {
+    if (!serviceData?.id) return;
+
+    setIsSubmitting(true);
+    try {
+      const response = await fetch(`/api/service/${serviceData.id}/depublish`, {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+        },
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        setError(errorData.error || "Erreur lors de la dépublication");
+        return;
+      }
+
+      onDepublished?.();
+      onClose();
+    } catch (err) {
+      setError("Erreur réseau lors de la dépublication");
+    } finally {
+      setIsSubmitting(false);
+      setShowDepublishConfirm(false);
+    }
+  };
+
+  const handlePublish = async () => {
+    if (!serviceData?.id) return;
+
+    setIsSubmitting(true);
+    try {
+      const response = await fetch(`/api/service/${serviceData.id}/publish`, {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+        },
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        setError(errorData.error || "Erreur lors de la publication");
+        return;
+      }
+
+      onUpdated?.(); // Use onUpdated to refresh the data
+      onClose();
+    } catch (err) {
+      setError("Erreur réseau lors de la publication");
+    } finally {
+      setIsSubmitting(false);
+      setShowPublishConfirm(false);
+    }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -135,15 +263,9 @@ const ServiceModal: React.FC<ServiceModalProps> = ({
       return;
     }
 
-    if (images.length === 0) {
-      setError("Veuillez ajouter au moins une image");
-      return;
-    }
-
     setIsSubmitting(true);
 
     try {
-      // Create FormData for multipart upload
       const formData = new FormData();
       formData.append("title", title);
       formData.append("description", description);
@@ -154,35 +276,64 @@ const ServiceModal: React.FC<ServiceModalProps> = ({
       formData.append("vendorId", vendorId.toString());
       formData.append("categoryId", categoryId.toString());
 
-      // Add images
-      images.forEach((img, index) => {
-        formData.append("images[]", img.file);
-        formData.append(`imageOrder[${index}]`, index.toString());
+      // Handle images for create/update
+      let imageIndex = 0;
+      const newImages = images.filter((img) => !img.isExisting);
+      const existingImages = images.filter((img) => img.isExisting);
 
-        // Mark primary image
-        if (img.id === primaryImageId) {
-          formData.append("primaryImageIndex", index.toString());
+      // Add new images
+      newImages.forEach((img) => {
+        if (img.file) {
+          formData.append("images[]", img.file);
+          if (img.id === primaryImageId) {
+            formData.append("primaryImageIndex", imageIndex.toString());
+          }
+          imageIndex++;
         }
       });
 
-      const res = await fetch("/api/service", {
-        method: "POST",
-        body: formData, // Don't set Content-Type header, let browser set it
+      // For updates, also send existing image info
+      if (currentMode === "edit" && serviceData?.id) {
+        existingImages.forEach((img, idx) => {
+          formData.append(`existingImages[${idx}][id]`, img.id);
+          formData.append(
+            `existingImages[${idx}][isPrimary]`,
+            (img.id === primaryImageId).toString()
+          );
+        });
+      }
+
+      const url =
+        currentMode === "edit" && serviceData?.id
+          ? `/api/service/${serviceData.id}`
+          : "/api/service";
+
+      const method = "POST";
+
+      // Add method override for updates
+      if (currentMode === "edit") {
+        formData.append("_method", "PUT");
+      }
+
+      const res = await fetch(url, {
+        method,
+        body: formData,
       });
 
+      const responseData = await res.json();
+
       if (!res.ok) {
-        const errData = await res.json();
-        setError(
-          errData.error || errData.errors
-            ? Object.values(errData.errors).join(", ")
-            : "Erreur création"
-        );
+        setError(responseData.error || "Erreur lors de l'opération");
         setIsSubmitting(false);
         return;
       }
 
       // Success
-      onCreated();
+      if (currentMode === "edit") {
+        onUpdated?.();
+      } else {
+        onCreated?.();
+      }
       onClose();
     } catch (err) {
       console.error(err);
@@ -191,8 +342,20 @@ const ServiceModal: React.FC<ServiceModalProps> = ({
     }
   };
 
-  const modalTitle =
-    type === "service" ? "Ajouter un service" : "Ajouter un bien";
+  const getModalTitle = () => {
+    const serviceType = type === "service" ? "service" : "bien";
+    switch (currentMode) {
+      case "create":
+        return `Ajouter un ${serviceType}`;
+      case "view":
+        return `Détails du ${serviceType}`;
+      case "edit":
+        return `Modifier le ${serviceType}`;
+      default:
+        return `${serviceType}`;
+    }
+  };
+
   const submitBtnColor =
     type === "service"
       ? "bg-[#38AC8E] hover:bg-teal-600"
@@ -200,16 +363,63 @@ const ServiceModal: React.FC<ServiceModalProps> = ({
 
   return (
     <div className="fixed inset-0 bg-black/10 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-lg w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+      <div className="bg-white rounded-lg w-full max-w-4xl max-h-[90vh] overflow-y-auto">
         <div className="sticky top-0 bg-white border-b border-gray-200 p-6 flex justify-between items-center">
-          <h2 className="text-xl font-semibold text-gray-800">{modalTitle}</h2>
-          <button
-            onClick={onClose}
-            className="text-gray-600 hover:text-gray-800 transition-colors"
-            aria-label="Fermer"
-          >
-            <IoClose size={24} />
-          </button>
+          <h2 className="text-xl font-semibold text-gray-800">
+            {getModalTitle()}
+          </h2>
+          <div className="flex gap-2 items-center">
+            {/* Mode Toggle Buttons */}
+            {serviceData && currentMode === "view" && (
+              <button
+                onClick={() => setCurrentMode("edit")}
+                className="flex items-center gap-1 sm:gap-2 px-2 sm:px-4 py-1.5 sm:py-2 bg-teal-500 text-white rounded-full hover:bg-teal-600 transition-colors text-xs sm:text-sm"
+              >
+                <IoPencil size={14} className="sm:w-4 sm:h-4" />
+                <span className="hidden sm:inline">Modifier</span>
+              </button>
+            )}
+
+            {serviceData && currentMode === "edit" && (
+              <button
+                onClick={() => setCurrentMode("view")}
+                className="flex items-center gap-1 sm:gap-2 px-2 sm:px-4 py-1.5 sm:py-2 bg-gray-400 text-white rounded-full hover:bg-gray-500 transition-colors text-xs sm:text-sm"
+              >
+                <IoEye size={14} className="sm:w-4 sm:h-4" />
+                <span className="hidden sm:inline">Voir</span>
+              </button>
+            )}
+
+            {/* Depublish Button */}
+            {serviceData && serviceData.status === "published" && (
+              <button
+                onClick={() => setShowDepublishConfirm(true)}
+                className="flex items-center gap-1 sm:gap-2 px-2 sm:px-4 py-1.5 sm:py-2 bg-orange-500 text-white rounded-full hover:bg-orange-600 transition-colors text-xs sm:text-sm"
+              >
+                <IoStop size={14} className="sm:w-4 sm:h-4" />
+                <span className="hidden sm:inline">Dépublier</span>
+              </button>
+            )}
+
+            {/* Publish Button */}
+            {serviceData && serviceData.status !== "published" && (
+              <button
+                onClick={() => setShowPublishConfirm(true)}
+                className="flex items-center gap-1 sm:gap-2 px-2 sm:px-4 py-1.5 sm:py-2 bg-green-500 text-white rounded-full hover:bg-green-600 transition-colors text-xs sm:text-sm"
+              >
+                <IoPlay size={14} className="sm:w-4 sm:h-4" />
+                <span className="hidden sm:inline">Publier</span>
+              </button>
+            )}
+
+            <button
+              onClick={onClose}
+              className="text-gray-600 hover:text-gray-800 transition-colors p-1"
+              aria-label="Fermer"
+            >
+              <IoClose size={20} className="sm:w-6 sm:h-6" />
+            </button>
+          </div>
         </div>
 
         <div className="p-6">
@@ -226,96 +436,143 @@ const ServiceModal: React.FC<ServiceModalProps> = ({
                 <label className="block text-sm font-medium text-gray-700 mb-1">
                   Titre *
                 </label>
-                <input
-                  type="text"
-                  className="w-full border border-gray-300 rounded-md p-2.5 focus:ring-2 focus:ring-teal-500 focus:border-transparent outline-none transition-all"
-                  value={title}
-                  onChange={(e) => setTitle(e.target.value)}
-                  placeholder="Nom du service/bien"
-                />
+                {currentMode === "view" ? (
+                  <div className="p-2.5 bg-gray-50 rounded-md border">
+                    {title}
+                  </div>
+                ) : (
+                  <input
+                    type="text"
+                    className="w-full border border-gray-300 rounded-md p-2.5 focus:ring-2 focus:ring-teal-500 focus:border-transparent outline-none transition-all"
+                    value={title}
+                    onChange={(e) => setTitle(e.target.value)}
+                    placeholder="Nom du service/bien"
+                  />
+                )}
               </div>
 
               <div className="md:col-span-2">
                 <label className="block text-sm font-medium text-gray-700 mb-1">
                   Description *
                 </label>
-                <textarea
-                  rows={3}
-                  className="w-full border border-gray-300 rounded-md p-2.5 focus:ring-2 focus:ring-teal-500 focus:border-transparent outline-none transition-all resize-none"
-                  value={description}
-                  onChange={(e) => setDescription(e.target.value)}
-                  placeholder="Description détaillée"
-                />
+                {currentMode === "view" ? (
+                  <div className="p-2.5 bg-gray-50 rounded-md border min-h-[80px]">
+                    {description}
+                  </div>
+                ) : (
+                  <textarea
+                    rows={3}
+                    className="w-full border border-gray-300 rounded-md p-2.5 focus:ring-2 focus:ring-teal-500 focus:border-transparent outline-none transition-all resize-none"
+                    value={description}
+                    onChange={(e) => setDescription(e.target.value)}
+                    placeholder="Description détaillée"
+                  />
+                )}
               </div>
 
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
                   Prix (en e-changes) *
                 </label>
-                <div className="relative">
-                  <input
-                    type="number"
-                    className="w-full border border-gray-300 rounded-md p-2.5 focus:ring-2 focus:ring-teal-500 focus:border-transparent outline-none transition-all"
-                    value={price}
-                    onChange={(e) => setPrice(Number(e.target.value))}
-                    placeholder="0"
-                    min="0"
-                  />
-                  <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
-                    <span className="text-gray-500">e-€</span>
+                {currentMode === "view" ? (
+                  <div className="p-2.5 bg-gray-50 rounded-md border">
+                    {price} e-€
                   </div>
-                </div>
+                ) : (
+                  <div className="relative">
+                    <input
+                      type="number"
+                      className="w-full border border-gray-300 rounded-md p-2.5 focus:ring-2 focus:ring-teal-500 focus:border-transparent outline-none transition-all"
+                      value={price}
+                      onChange={(e) => setPrice(Number(e.target.value))}
+                      placeholder="0"
+                      min="0"
+                    />
+                    <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
+                      <span className="text-gray-500">e-€</span>
+                    </div>
+                  </div>
+                )}
               </div>
 
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
                   Catégorie *
                 </label>
-                <select
-                  className="w-full border border-gray-300 rounded-md p-2.5 focus:ring-2 focus:ring-teal-500 focus:border-transparent outline-none transition-all bg-white"
-                  value={categoryId}
-                  onChange={(e) => setCategoryId(Number(e.target.value))}
-                >
-                  <option value="">Sélectionner une catégorie</option>
-                  {categories.map((cat) => (
-                    <option key={cat.id} value={cat.id}>
-                      {cat.name}
-                    </option>
-                  ))}
-                </select>
+                {currentMode === "view" ? (
+                  <div className="p-2.5 bg-gray-50 rounded-md border">
+                    {categories.find((cat) => cat.id === categoryId)?.name ||
+                      "Non définie"}
+                  </div>
+                ) : (
+                  <select
+                    className="w-full border border-gray-300 rounded-md p-2.5 focus:ring-2 focus:ring-teal-500 focus:border-transparent outline-none transition-all bg-white"
+                    value={categoryId}
+                    onChange={(e) => setCategoryId(Number(e.target.value))}
+                  >
+                    <option value="">Sélectionner une catégorie</option>
+                    {categories.map((cat) => (
+                      <option key={cat.id} value={cat.id}>
+                        {cat.name}
+                      </option>
+                    ))}
+                  </select>
+                )}
               </div>
             </div>
 
-            {/* Image Upload Section */}
+            {/* Status Display for View Mode */}
+            {currentMode === "view" && serviceData && (
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Statut
+                </label>
+                <div
+                  className={`inline-flex px-3 py-1 rounded-full text-sm font-medium ${
+                    serviceData.status === "published"
+                      ? "bg-green-100 text-green-800"
+                      : "bg-gray-100 text-gray-800"
+                  }`}
+                >
+                  {serviceData.status === "published" ? "Publié" : "Dépublié"}
+                </div>
+              </div>
+            )}
+
+            {/* Image Section */}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
-                Images * (maximum 10, formats: JPG, PNG, WebP)
+                Images{" "}
+                {currentMode !== "view" &&
+                  "(maximum 10, formats: JPG, PNG, WebP)"}
               </label>
 
-              {/* Upload Button */}
-              <div className="mb-4">
-                <input
-                  ref={fileInputRef}
-                  type="file"
-                  multiple
-                  accept="image/jpeg,image/jpg,image/png,image/webp"
-                  onChange={handleImageSelect}
-                  className="hidden"
-                />
-                <button
-                  type="button"
-                  onClick={() => fileInputRef.current?.click()}
-                  className="flex items-center gap-2 px-4 py-2 border-2 border-dashed border-gray-300 rounded-md hover:border-teal-500 hover:bg-teal-50 transition-colors"
-                  disabled={images.length >= 10}
-                >
-                  <IoCloudUpload className="text-gray-500" />
-                  <span className="text-gray-600">
-                    {images.length >= 10
-                      ? "Maximum atteint"
-                      : "Ajouter des images"}
-                  </span>
-                </button>
-              </div>
+              {/* Upload Button - Only show in create/edit mode */}
+              {currentMode !== "view" && (
+                <div className="mb-4">
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    multiple
+                    accept="image/jpeg,image/jpg,image/png,image/webp"
+                    onChange={handleImageSelect}
+                    className="hidden"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => fileInputRef.current?.click()}
+                    className="flex items-center gap-2 px-4 py-2 border-2 border-dashed border-gray-300 rounded-md hover:border-teal-500 hover:bg-teal-50 transition-colors"
+                    disabled={images.length >= 10}
+                  >
+                    <IoCloudUpload className="text-gray-500" />
+                    <span className="text-gray-600">
+                      {images.length >= 10
+                        ? "Maximum atteint"
+                        : "Ajouter des images"}
+                    </span>
+                  </button>
+                </div>
+              )}
 
               {/* Image Preview Grid */}
               {images.length > 0 && (
@@ -329,10 +586,15 @@ const ServiceModal: React.FC<ServiceModalProps> = ({
                             : "border-gray-300"
                         }`}
                       >
-                        <img
-                          src={img.preview}
+                        <Image
+                          src={
+                            img.isExisting
+                              ? getFullImageUrl(img.url || "")
+                              : img.preview
+                          }
                           alt="Preview"
-                          className="w-full h-full object-cover"
+                          fill
+                          className="object-cover"
                         />
 
                         {/* Primary Badge */}
@@ -342,34 +604,36 @@ const ServiceModal: React.FC<ServiceModalProps> = ({
                           </div>
                         )}
 
-                        {/* Action Buttons */}
-                        <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
-                          {primaryImageId !== img.id && (
+                        {/* Action Buttons - Only show in create/edit mode */}
+                        {currentMode !== "view" && (
+                          <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
+                            {primaryImageId !== img.id && (
+                              <button
+                                type="button"
+                                onClick={() => setPrimary(img.id)}
+                                className="bg-white text-gray-700 p-1.5 rounded hover:bg-gray-100"
+                                title="Définir comme image principale"
+                              >
+                                <IoImage size={16} />
+                              </button>
+                            )}
                             <button
                               type="button"
-                              onClick={() => setPrimary(img.id)}
-                              className="bg-white text-gray-700 p-1.5 rounded hover:bg-gray-100"
-                              title="Définir comme image principale"
+                              onClick={() => removeImage(img.id)}
+                              className="bg-red-500 text-white p-1.5 rounded hover:bg-red-600"
+                              title="Supprimer"
                             >
-                              <IoImage size={16} />
+                              <IoTrash size={16} />
                             </button>
-                          )}
-                          <button
-                            type="button"
-                            onClick={() => removeImage(img.id)}
-                            className="bg-red-500 text-white p-1.5 rounded hover:bg-red-600"
-                            title="Supprimer"
-                          >
-                            <IoTrash size={16} />
-                          </button>
-                        </div>
+                          </div>
+                        )}
                       </div>
                     </div>
                   ))}
                 </div>
               )}
 
-              {images.length > 0 && (
+              {images.length > 0 && currentMode !== "view" && (
                 <p className="text-xs text-gray-500 mt-2">
                   Cliquez sur une image pour la définir comme principale.
                   L'image principale sera affichée en premier dans les listes.
@@ -385,19 +649,91 @@ const ServiceModal: React.FC<ServiceModalProps> = ({
                 className="mr-3 px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50 transition-colors"
                 disabled={isSubmitting}
               >
-                Annuler
+                {currentMode === "view" ? "Fermer" : "Annuler"}
               </button>
-              <button
-                type="submit"
-                className={`${submitBtnColor} text-white px-5 py-2 rounded-md transition-colors shadow-sm font-medium`}
-                disabled={isSubmitting}
-              >
-                {isSubmitting ? "Création..." : "Créer"}
-              </button>
+              {(currentMode === "create" || currentMode === "edit") && (
+                <button
+                  type="submit"
+                  className={`${submitBtnColor} text-white px-5 py-2 rounded-md transition-colors shadow-sm font-medium`}
+                  disabled={isSubmitting}
+                >
+                  {isSubmitting
+                    ? currentMode === "edit"
+                      ? "Modification..."
+                      : "Création..."
+                    : currentMode === "edit"
+                    ? "Modifier"
+                    : "Créer"}
+                </button>
+              )}
             </div>
           </form>
         </div>
       </div>
+
+      {/* Depublish Confirmation Modal */}
+      {showDepublishConfirm && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[60]">
+          <div className="bg-white rounded-lg p-6 max-w-md mx-4">
+            <h3 className="text-lg font-semibold mb-4">
+              Confirmer la dépublication
+            </h3>
+            <p className="text-gray-600 mb-6">
+              Êtes-vous sûr de vouloir dépublier ce{" "}
+              {type === "service" ? "service" : "bien"} ? Il ne sera plus
+              visible par les autres utilisateurs.
+            </p>
+            <div className="flex justify-end gap-3">
+              <button
+                onClick={() => setShowDepublishConfirm(false)}
+                className="px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50"
+                disabled={isSubmitting}
+              >
+                Annuler
+              </button>
+              <button
+                onClick={handleDepublish}
+                className="px-4 py-2 bg-red-500 text-white rounded-md hover:bg-red-600"
+                disabled={isSubmitting}
+              >
+                {isSubmitting ? "Dépublication..." : "Dépublier"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Publish Confirmation Modal */}
+      {showPublishConfirm && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[60]">
+          <div className="bg-white rounded-lg p-6 max-w-md mx-4">
+            <h3 className="text-lg font-semibold mb-4">
+              Confirmer la publication
+            </h3>
+            <p className="text-gray-600 mb-6">
+              Êtes-vous sûr de vouloir publier ce{" "}
+              {type === "service" ? "service" : "bien"} ? Il sera visible par
+              tous les utilisateurs.
+            </p>
+            <div className="flex justify-end gap-3">
+              <button
+                onClick={() => setShowPublishConfirm(false)}
+                className="px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50"
+                disabled={isSubmitting}
+              >
+                Annuler
+              </button>
+              <button
+                onClick={handlePublish}
+                className="px-4 py-2 bg-green-500 text-white rounded-md hover:bg-green-600"
+                disabled={isSubmitting}
+              >
+                {isSubmitting ? "Publication..." : "Publier"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
