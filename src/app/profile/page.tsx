@@ -952,10 +952,19 @@ export default function ProfilePage() {
                   Résumé pour Abonnement annuel e-change
                 </p>
               </div>
-              <StripeSubscribeButton
-                buttonText="Souscrire maintenant"
-                className="bg-gray-200 text-gray-700 w-full py-2 rounded-xl mb-6 hover:bg-gray-300 cursor-pointer"
-              />
+              {isActive ? (
+                <button
+                  disabled
+                  className="w-full py-2 rounded-xl mb-6 bg-gray-300 text-gray-500 cursor-not-allowed"
+                >
+                  Déjà abonné
+                </button>
+              ) : (
+                <StripeSubscribeButton
+                  buttonText="Souscrire maintenant"
+                  className="w-full py-2 rounded-xl mb-6 bg-gray-200 text-gray-700 hover:bg-gray-300 cursor-pointer"
+                />
+              )}
 
               <div className="text-center">
                 <p className="text-sm text-gray-700 font-medium mb-1">
@@ -987,9 +996,6 @@ export default function ProfilePage() {
                     <th className="text-left py-1 pb-0 text-base text-gray-600 font-medium">
                       SOMME
                     </th>
-                    <th className="text-left py-1 pb-0 text-base text-gray-600 font-medium">
-                      E-CHANGES REÇUS
-                    </th>
                   </tr>
                 </thead>
                 <tbody>
@@ -1004,9 +1010,6 @@ export default function ProfilePage() {
                         Abonnement annuel e-change
                       </td>
                       <td className="py-2 pt-1 pr-6 font-semibold">20 €</td>
-                      <td className="py-2 pt-1 text-[#F4C300] font-semibold">
-                        99
-                      </td>
                     </tr>
                   ) : (
                     <tr>
