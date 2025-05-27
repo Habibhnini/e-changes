@@ -67,7 +67,7 @@ const NotificationDropdown: React.FC = () => {
       </button>
 
       {open && (
-        <div className="absolute right-[-40px] mt-2 w-80 bg-white border border-gray-200 shadow-lg rounded-md z-50">
+        <div className="absolute right-[-70px] mt-2 w-80 bg-white border border-gray-200 shadow-lg rounded-md z-50">
           <div className="p-3 border-b font-semibold text-gray-700">
             Notifications
           </div>

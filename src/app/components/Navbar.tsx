@@ -163,13 +163,19 @@ const Navbar: React.FC<NavbarProps> = ({
         <div className="sm:hidden">
           <div className="pt-2 pb-3 space-y-1">
             <Link
+              href="/"
+              className="block px-3 py-2 text-base font-medium text-gray-700 hover:text-gray-900 hover:bg-gray-50"
+            >
+              Home
+            </Link>
+            <Link
               href="/explorer"
               className="block px-3 py-2 text-base font-medium text-gray-700 hover:text-gray-900 hover:bg-gray-50"
             >
               Explorer
             </Link>
             <Link
-              href="#"
+              href="/apropos"
               className="block px-3 py-2 text-base font-medium text-gray-700 hover:text-gray-900 hover:bg-gray-50"
             >
               A propos
