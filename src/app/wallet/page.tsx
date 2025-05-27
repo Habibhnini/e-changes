@@ -3,6 +3,7 @@
 import { Suspense } from "react";
 import { useSubscriptionStatus } from "../hooks/useSubscription";
 import WalletPage from "./WalletPage";
+import SubscriptionRequired from "../components/SubscriptionRequired";
 
 export default function Page() {
   const { isActive, loading } = useSubscriptionStatus();
@@ -16,11 +17,7 @@ export default function Page() {
   }
 
   if (!isActive) {
-    return (
-      <div className="text-center mt-20 text-red-500">
-        Accès réservé aux abonnés actifs.
-      </div>
-    );
+    return <SubscriptionRequired />;
   }
 
   return (
