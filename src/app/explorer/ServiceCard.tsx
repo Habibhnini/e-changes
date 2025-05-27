@@ -1,15 +1,22 @@
-// ServiceCard.tsx
 import React from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { IoLocationOutline } from "react-icons/io5";
+
 interface ServiceCardProps {
   service: {
     id: number;
     title: string;
     description: string;
     category: string;
-    imageUrl: string | null;
+    imageUrl?: string | null; // Keep for backward compatibility
+    primaryImageUrl?: string | null; // New primary image URL
+    images?: Array<{
+      id: number;
+      url: string;
+      isPrimary: boolean;
+      sortOrder: number;
+    }>;
     price: number;
     rating: number;
     location: string;
@@ -25,13 +32,42 @@ const ServiceCard: React.FC<ServiceCardProps> = ({ service, isMobile }) => {
       ? service.category.replace(/(\d+)$/, "#$1")
       : "";
 
-  // Check if the service has a valid image URL and ensure it's not null
-  const hasValidImage =
-    service.imageUrl &&
-    typeof service.imageUrl === "string" &&
-    !service.imageUrl.includes("placeholder");
+  // Get the primary image URL - simplified to only use primaryImageUrl
+  const primaryImageUrl = service.primaryImageUrl || "";
 
-  // Using the same design for both mobile and desktop
+  // Check if we have a valid image
+  const hasValidImage =
+    primaryImageUrl &&
+    typeof primaryImageUrl === "string" &&
+    !primaryImageUrl.includes("placeholder") &&
+    primaryImageUrl.trim() !== "";
+
+  // Build full image URL with API URL
+  const getFullImageUrl = (url: string): string => {
+    if (!url) {
+      return "/logo.png";
+    }
+
+    if (url.startsWith("http")) {
+      return url;
+    }
+
+    // Get the API URL from environment variables
+    const apiUrl = process.env.NEXT_PUBLIC_API_URL || "";
+
+    if (url.startsWith("/uploads/")) {
+      const fullUrl = `${apiUrl}${url}`;
+
+      return fullUrl;
+    }
+
+    const fullUrl = `${apiUrl}/uploads/services/${url}`;
+
+    return fullUrl;
+  };
+
+  const displayImageUrl = hasValidImage ? getFullImageUrl(primaryImageUrl) : "";
+
   return (
     <Link
       href={`/explorer/services/${service.id}`}
@@ -44,15 +80,24 @@ const ServiceCard: React.FC<ServiceCardProps> = ({ service, isMobile }) => {
       >
         {hasValidImage ? (
           <Image
-            src={service.imageUrl as string}
+            src={displayImageUrl}
             alt={service.title}
             fill
             className="object-cover rounded-lg group-hover:scale-105 transition-transform duration-300"
+            onError={(e) => {
+              console.error(
+                "❌ ServiceCard image failed to load:",
+                displayImageUrl
+              );
+              // If image fails to load, hide the img element and show placeholder
+              const target = e.target as HTMLImageElement;
+              target.style.display = "none";
+            }}
           />
         ) : (
-          <div className="flex items-center justify-center h-full w-full bg-white">
+          <div className="flex items-center justify-center h-full w-full bg-gray-100">
             <Image
-              src="/logo.jpg"
+              src="/logo.png"
               alt="Logo placeholder"
               width={isMobile ? 100 : 120}
               height={isMobile ? 100 : 120}
@@ -61,7 +106,12 @@ const ServiceCard: React.FC<ServiceCardProps> = ({ service, isMobile }) => {
           </div>
         )}
 
-        {/* Rating at the top right corner */}
+        {/* Image count indicator */}
+        {service.images && service.images.length > 1 && (
+          <div className="absolute top-2 right-2 bg-black/60 text-white text-xs px-2 py-1 rounded-full">
+            {service.images.length} photos
+          </div>
+        )}
 
         {/* Permanent partial gradient overlay at the bottom */}
         <div className="absolute inset-x-0 bottom-0 h-1/2 bg-gradient-to-t from-black/60 to-transparent rounded-b-lg">
@@ -69,14 +119,14 @@ const ServiceCard: React.FC<ServiceCardProps> = ({ service, isMobile }) => {
           <div className="absolute bottom-0 left-0 right-0 p-3">
             <div className="flex justify-between items-center">
               {/* Price in the bottom left corner */}
-              <div className="text-[#fce070]  font-medium flex items-center">
+              <div className="text-[#fce070] font-medium flex items-center">
                 {service.price}{" "}
                 <Image
                   src="/coin.png"
-                  alt="User profile"
+                  alt="Energy coin"
                   width={40}
                   height={40}
-                  className=" object-cover ml-2 w-5 h-5"
+                  className="object-cover ml-2 w-5 h-5"
                 />
               </div>
 
@@ -90,7 +140,7 @@ const ServiceCard: React.FC<ServiceCardProps> = ({ service, isMobile }) => {
         </div>
 
         {/* Additional overlay that appears on hover */}
-        <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/40 to-transparent opacity-0 group-hover:transition-opacity duration-300 rounded-lg">
+        <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/40 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 rounded-lg">
           {/* This is empty as the content is already shown in the permanent overlay */}
         </div>
       </div>

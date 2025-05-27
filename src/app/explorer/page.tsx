@@ -10,12 +10,20 @@ interface Service {
   title: string;
   description: string;
   category: string;
-  imageUrl: string;
+  imageUrl?: string; // optional legacy
+  primaryImageUrl?: string | null;
+  images?: Array<{
+    id: number;
+    url: string;
+    isPrimary: boolean;
+    sortOrder: number;
+  }>;
   price: number;
   rating: number;
   location: string;
   createdAt: string;
 }
+
 interface Category {
   id: number;
   name: string;
@@ -24,7 +32,8 @@ export default function ExplorerPage() {
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedService, setSelectedService] = useState("");
   const [areaFilter, setAreaFilter] = useState("");
-  const [selectedCategory, setSelectedCategory] = useState("");
+  const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
+
   const [showPopulaireDropdown, setShowPopulaireDropdown] = useState(false);
   const [selectedSort, setSelectedSort] = useState<string>(""); // store "price_desc"
 
@@ -38,14 +47,7 @@ export default function ExplorerPage() {
   const serviceTypes = ["service", "bien"];
   const [categories, setCategories] = useState<Category[]>([]);
   const [showCategoryDropdown, setShowCategoryDropdown] = useState(false);
-  // API URL - internal Next.js API route
-  const API_URL = "/api/services";
-  const sortOptions = [
-    { label: "Prix croissant", value: "price_asc" },
-    { label: "Prix décroissant", value: "price_desc" },
-    { label: "Date récente", value: "created_at_desc" },
-    { label: "Date ancienne", value: "created_at_asc" },
-  ];
+
   useEffect(() => {
     const timer = setTimeout(() => {
       fetchServices();
@@ -115,7 +117,11 @@ export default function ExplorerPage() {
       if (searchQuery) params.append("search", searchQuery);
       if (selectedService) params.append("type", selectedService); // Changed to match your API
       if (areaFilter) params.append("location", areaFilter); // You might need to add this field to your API
-      if (selectedCategory) params.append("category", selectedCategory);
+      if (selectedCategories.length > 0) {
+        selectedCategories.forEach((catId) =>
+          params.append("category[]", catId)
+        );
+      }
 
       // Sort mapping
       if (selectedSort) {
@@ -140,7 +146,10 @@ export default function ExplorerPage() {
           title: apiService.title,
           description: apiService.description,
           category: apiService.category.name, // Access nested category name
-          imageUrl: "/placeholder-service.jpg", // You'll need to add image URLs to your API
+          primaryImageUrl:
+            apiService.primaryImageUrl || "/placeholder-service.jpg",
+          images: apiService.images || [],
+          // You'll need to add image URLs to your API
           price: apiService.price,
           rating: 4, // You'll need to add this to your API model
           location: apiService.vendor.city, // You'll need to add location to your model
@@ -183,7 +192,13 @@ export default function ExplorerPage() {
     }, 300);
 
     return () => clearTimeout(debounceTimer);
-  }, [selectedService, selectedCategory]);
+  }, [selectedService, selectedCategories]);
+
+  const resetFilters = () => {
+    setSelectedCategories([]);
+    setSelectedSort("");
+    fetchServices();
+  };
 
   return (
     <div className="max-w-[1800px] mx-auto px-4 sm:px-6 lg:px-8 py-8">
@@ -408,19 +423,44 @@ export default function ExplorerPage() {
           </button>
 
           {showCategoryDropdown && (
-            <div className="absolute left-0 mt-2 w-48 bg-white rounded-md shadow-lg z-20">
+            <div className="absolute left-0 mt-2 w-64 bg-white rounded-md shadow-lg z-20 p-2">
               {categories.map((cat) => (
-                <button
+                <label
                   key={cat.id}
-                  onClick={() => {
-                    setSelectedCategory(String(cat.id));
-                    setShowCategoryDropdown(false);
-                  }}
-                  className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                  className="flex items-center px-2 py-1 text-sm text-gray-700 hover:bg-gray-100 rounded cursor-pointer"
                 >
+                  <input
+                    type="checkbox"
+                    className="form-checkbox mr-2 text-[#38AC8E] rounded"
+                    checked={selectedCategories.includes(String(cat.id))}
+                    onChange={(e) => {
+                      const id = String(cat.id);
+                      if (e.target.checked) {
+                        setSelectedCategories((prev) => [...prev, id]);
+                      } else {
+                        setSelectedCategories((prev) =>
+                          prev.filter((c) => c !== id)
+                        );
+                      }
+                    }}
+                  />
                   {cat.name}
-                </button>
+                </label>
               ))}
+
+              {/* Clear all / Apply buttons */}
+              <div className="flex justify-between mt-3 px-2">
+                <button
+                  onClick={() => {
+                    setSelectedCategories([]);
+                    setShowCategoryDropdown(false);
+                    fetchServices(); // refetch with no category filter
+                  }}
+                  className="text-xs text-red-500 hover:underline"
+                >
+                  Réinitialiser
+                </button>
+              </div>
             </div>
           )}
         </div>
@@ -455,19 +495,44 @@ export default function ExplorerPage() {
           </button>
 
           {showCategoryDropdown && (
-            <div className="absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg z-20">
+            <div className="absolute right-0 mt-2 w-64 bg-white rounded-md shadow-lg z-20 p-2">
               {categories.map((cat) => (
-                <button
+                <label
                   key={cat.id}
-                  onClick={() => {
-                    setSelectedCategory(String(cat.id));
-                    setShowCategoryDropdown(false);
-                  }}
-                  className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                  className="flex items-center px-2 py-1 text-sm text-gray-700 hover:bg-gray-100 rounded cursor-pointer"
                 >
+                  <input
+                    type="checkbox"
+                    className="form-checkbox mr-2 text-[#38AC8E] rounded"
+                    checked={selectedCategories.includes(String(cat.id))}
+                    onChange={(e) => {
+                      const id = String(cat.id);
+                      if (e.target.checked) {
+                        setSelectedCategories((prev) => [...prev, id]);
+                      } else {
+                        setSelectedCategories((prev) =>
+                          prev.filter((c) => c !== id)
+                        );
+                      }
+                    }}
+                  />
                   {cat.name}
-                </button>
+                </label>
               ))}
+
+              {/* Clear all / Apply buttons */}
+              <div className="flex justify-between mt-3 px-2">
+                <button
+                  onClick={() => {
+                    setSelectedCategories([]);
+                    setShowCategoryDropdown(false);
+                    fetchServices(); // refetch with no category filter
+                  }}
+                  className="text-xs text-red-500 hover:underline"
+                >
+                  Réinitialiser
+                </button>
+              </div>
             </div>
           )}
         </div>

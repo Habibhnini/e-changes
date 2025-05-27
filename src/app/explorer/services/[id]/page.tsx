@@ -9,8 +9,14 @@ import { IoWarningOutline, IoHeartOutline } from "react-icons/io5";
 import { PiShareFat } from "react-icons/pi";
 import { useAuth } from "../../../contexts/AuthContext";
 import apiClient from "../../../api/apiClient";
+import ImageGallery from "@/app/components/ImageGallery";
+interface ServiceImage {
+  id: number;
+  url: string;
+  isPrimary: boolean;
+  sortOrder: number;
+}
 
-// Define the Service type
 interface ServiceDetail {
   id: number;
   title: string;
@@ -19,6 +25,8 @@ interface ServiceDetail {
   type: string;
   status: string;
   createdAt: string;
+  images?: ServiceImage[]; // Add this line
+  primaryImageUrl?: string; // Add this line
   category: {
     id: number;
     name: string;
@@ -38,7 +46,6 @@ interface ServiceDetail {
   } | null;
   isOwner?: boolean;
 }
-
 export default function ServiceDetailPage() {
   const params = useParams();
   const id = params?.id as string;
@@ -55,9 +62,15 @@ export default function ServiceDetailPage() {
       setLoading(true);
       try {
         const data = await apiClient.getServiceDetail(id);
+
+        // Log each image in the array
+        if (data.images && data.images.length > 0) {
+          data.images.forEach((img, index) => {});
+        } else {
+        }
+
         setService(data);
       } catch (err) {
-        // console.error("Error fetching service details:", err);
         setError("Failed to load service details. Please try again later.");
       } finally {
         setLoading(false);
@@ -95,7 +108,7 @@ export default function ServiceDetailPage() {
     try {
       if (service?.transaction) {
         // If transaction already exists, redirect to the chat page with transaction ID
-        // console.log("Using existing transaction:", service.transaction.id);
+
         router.push(`/chat?transaction=${service.transaction.id}`);
       } else {
         // Create a new transaction
@@ -112,7 +125,6 @@ export default function ServiceDetailPage() {
 
         // Get the response text for debugging
         const responseText = await response.text();
-        //  console.log("API Response:", response.status, responseText);
 
         if (!response.ok) {
           throw new Error(
@@ -247,17 +259,6 @@ export default function ServiceDetailPage() {
       {/* Desktop Layout */}
       <div className="hidden md:block">
         {/* Action buttons at the top right */}
-        <div className="flex justify-end space-x-2 mb-4">
-          <button className="p-1 cursor-pointer hover:scale-110 transition-transform duration-200 ease-in-out">
-            <IoHeartOutline className="h-6 w-6 text-gray-500 hover:text-red-500 transition-colors duration-200" />
-          </button>
-          <button className="p-1 cursor-pointer hover:scale-110 transition-transform duration-200 ease-in-out">
-            <PiShareFat className="h-6 w-6 text-gray-500 hover:text-blue-500 transition-colors duration-200" />
-          </button>
-          <button className="p-1 cursor-pointer hover:scale-110 transition-transform duration-200 ease-in-out">
-            <IoWarningOutline className="h-6 w-6 text-gray-500 hover:text-yellow-500 transition-colors duration-200" />
-          </button>
-        </div>
 
         {/* Main content area */}
         <div className="flex flex-col flex-1">
@@ -266,29 +267,11 @@ export default function ServiceDetailPage() {
             {/* Main image with thumbnails on the left */}
             <div className="w-1/3 flex">
               {/* Thumbnails next to the image */}
-              <div className="flex flex-col gap-2 mr-2">
-                {[...Array(3)].map((_, index) => (
-                  <div
-                    key={index}
-                    className="w-16 h-16 bg-[#38AC8E] rounded-md cursor-pointer hover:opacity-80 transition-opacity duration-200 hover:scale-105 ease-in-out"
-                  ></div>
-                ))}
-              </div>
-
-              {/* Main image */}
-              <div className="flex-1">
-                <div className="relative w-full h-full cursor-pointer hover:opacity-95 transition-opacity duration-200">
-                  <Image
-                    src="/service-placeholder.png"
-                    alt="Service image"
-                    width={422}
-                    height={282}
-                    layout="responsive"
-                    objectFit="cover"
-                    className="rounded-lg"
-                  />
-                </div>
-              </div>
+              <ImageGallery
+                images={service.images || []}
+                title={service.title}
+                isMobile={false}
+              />
             </div>
 
             {/* Service summary */}
@@ -378,9 +361,6 @@ export default function ServiceDetailPage() {
                       <div className="font-medium mr-2">
                         {service.vendor.firstName} {service.vendor.lastName}
                       </div>
-                      <div className="flex">
-                        {renderStars(service.vendor.rating)}
-                      </div>
                     </div>
                     <span className="text-xs text-gray-600">
                       {service.vendor.email}
@@ -390,21 +370,23 @@ export default function ServiceDetailPage() {
 
                 {/* Action buttons - moved to same line as user name */}
                 <div className="flex space-x-3">
-                  <Link href={`/profile/${service.vendor.id}`}>
-                    <button className="border border-[#38AC8E] text-[#38AC8E] py-2 px-4 rounded-full font-medium text-sm cursor-pointer hover:bg-[#38AC8E] hover:text-white transition-all duration-300 ease-in-out transform hover:scale-105 active:scale-95">
-                      Voir le profil
-                    </button>
-                  </Link>
+                  {user?.id !== service.vendor.id && (
+                    <div className="flex space-x-3">
+                      <Link href={`/profile/${service.vendor.id}`}>
+                        <button className="border border-[#38AC8E] text-[#38AC8E] py-2 px-4 rounded-full font-medium text-sm cursor-pointer hover:bg-[#38AC8E] hover:text-white transition-all duration-300 ease-in-out transform hover:scale-105 active:scale-95">
+                          Voir le profil
+                        </button>
+                      </Link>
 
-                  {!service.isOwner && (
-                    <button
-                      onClick={handleInterestClick}
-                      className="bg-[#38AC8E] text-white py-2 px-4 rounded-full font-medium text-sm cursor-pointer hover:bg-[#2D8A70] transition-colors duration-300 ease-in-out transform hover:scale-105 active:scale-95"
-                    >
-                      {service.transaction
-                        ? "Continuer la conversation"
-                        : "Je suis intéressé"}
-                    </button>
+                      <button
+                        onClick={handleInterestClick}
+                        className="bg-[#38AC8E] text-white py-2 px-4 rounded-full font-medium text-sm cursor-pointer hover:bg-[#2D8A70] transition-colors duration-300 ease-in-out transform hover:scale-105 active:scale-95"
+                      >
+                        {service.transaction
+                          ? "Continuer la conversation"
+                          : "Je suis intéressé"}
+                      </button>
+                    </div>
                   )}
                 </div>
               </div>
@@ -422,41 +404,17 @@ export default function ServiceDetailPage() {
       {/* Mobile Layout */}
       <div className="block md:hidden">
         {/* Mobile action buttons */}
-        <div className="flex justify-end space-x-3 mb-4">
-          <button className="p-2 rounded-full cursor-pointer transform hover:scale-110 active:scale-90 transition-transform duration-200 ease-in-out">
-            <IoHeartOutline className="h-5 w-5 text-gray-500 hover:text-red-500 transition-colors duration-200" />
-          </button>
-          <button className="p-2 rounded-full cursor-pointer transform hover:scale-110 active:scale-90 transition-transform duration-200 ease-in-out">
-            <PiShareFat className="h-5 w-5 text-gray-500 hover:text-blue-500 transition-colors duration-200" />
-          </button>
-          <button className="p-2 rounded-full cursor-pointer transform hover:scale-110 active:scale-90 transition-transform duration-200 ease-in-out">
-            <IoWarningOutline className="h-5 w-5 text-gray-500 hover:text-yellow-500 transition-colors duration-200" />
-          </button>
-        </div>
 
         {/* Main image */}
         <div className="mb-4">
-          <div className="w-full h-48 bg-gray-200 rounded-lg overflow-hidden cursor-pointer">
-            <div className="relative w-full h-full hover:opacity-90 transition-opacity duration-200">
-              <Image
-                src="/service-placeholder.png"
-                alt="Service image"
-                layout="fill"
-                objectFit="cover"
-              />
-            </div>
-          </div>
+          <ImageGallery
+            images={service.images || []}
+            title={service.title}
+            isMobile={true}
+          />
         </div>
 
         {/* Thumbnails below the image */}
-        <div className="flex justify-start gap-2 mb-4">
-          {[...Array(3)].map((_, index) => (
-            <div
-              key={index}
-              className="w-10 h-10 bg-[#38AC8E] rounded-md cursor-pointer hover:opacity-80 transition-opacity duration-200 hover:scale-105 ease-in-out"
-            ></div>
-          ))}
-        </div>
 
         {/* Title and category - moved right above resume */}
         <div className="mb-4">

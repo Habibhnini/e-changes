@@ -19,19 +19,28 @@ export default function ProfilePage() {
   const [userBiens, setUserBiens] = useState<Service[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const { logout, user } = useAuth();
+  const { logout, user, refreshUserProfile } = useAuth();
   const [isEditing, setIsEditing] = useState(false);
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [imagePreview, setImagePreview] = useState<string | null>(null);
   const { isActive, loading: subscriptionLoading } = useSubscriptionStatus();
   const imageInputRef = useRef<HTMLInputElement>(null);
+  const [subscription, setSubscription] = useState<any | null>(null);
 
   const [notification, setNotification] = useState({
     show: false,
     message: "",
     type: "",
   });
+  const getFullImageUrl = (url: string): string => {
+    if (!url) return "/logo.jpg";
+    if (url.startsWith("http")) return url;
+    const apiUrl = process.env.NEXT_PUBLIC_API_URL || "";
+    return url.startsWith("/uploads/")
+      ? `${apiUrl}${url}`
+      : `${apiUrl}/uploads/services/${url}`;
+  };
 
   // Handle showing notification popup
   const showNotification = (message: string, type: string) => {
@@ -68,6 +77,10 @@ export default function ProfilePage() {
     }
 
     const formData = new FormData(e.currentTarget);
+    const fileInput = imageInputRef.current;
+    if (fileInput?.files?.[0]) {
+      formData.append("photoId", fileInput.files[0]); // ✅ attach image
+    }
 
     try {
       const response = await fetch(
@@ -86,6 +99,8 @@ export default function ProfilePage() {
         showNotification(result.error || "Erreur serveur", "error");
       } else {
         showNotification("Profil mis à jour avec succès", "success");
+        await refreshUserProfile();
+
         setIsEditing(false);
         setPassword("");
         setConfirmPassword("");
@@ -94,6 +109,33 @@ export default function ProfilePage() {
       showNotification("Une erreur est survenue", "error");
     }
   };
+  useEffect(() => {
+    const fetchSubscription = async () => {
+      if (!user?.id) return;
+      try {
+        const res = await fetch(
+          `${process.env.NEXT_PUBLIC_API_URL}/api/subscription/user/${user.id}`,
+          {
+            headers: {
+              Authorization: `Bearer ${localStorage.getItem("token")}`,
+            },
+          }
+        );
+
+        if (!res.ok) {
+          throw new Error("Aucune souscription trouvée");
+        }
+
+        const data = await res.json();
+        setSubscription(data);
+      } catch (err) {
+        setSubscription(null);
+      }
+    };
+
+    fetchSubscription();
+  }, [user]);
+
   // Mock subscription data
   const subscriptionData = {
     price: "20€",
@@ -114,7 +156,14 @@ export default function ProfilePage() {
     setShowModal(true);
   };
   const closeModal = () => setShowModal(false);
-
+  const mapWithImages = (items: any[]) =>
+    items.map((item) => ({
+      ...item,
+      primaryImageUrl: item.primaryImageUrl || "", // needed for display
+      images: item.images || [],
+      location: item.vendor?.city || "Non spécifié",
+      rating: 4,
+    }));
   // Charger les données réelles au chargement de la page
   useEffect(() => {
     const fetchProfileData = async () => {
@@ -135,8 +184,8 @@ export default function ProfilePage() {
             (s: { type: string }) => s.type === "bien"
           );
 
-          setUserServices(services);
-          setUserBiens(biens);
+          setUserServices(mapWithImages(services));
+          setUserBiens(mapWithImages(biens));
         }
       } catch (err) {
         //  console.error("Erreur lors du chargement des données:", err);
@@ -305,13 +354,26 @@ export default function ProfilePage() {
                               <div className="w-full h-48 bg-white rounded-lg mb-2 transition-all duration-300 group-hover:shadow-lg relative overflow-hidden border border-gray-200">
                                 {/* Placeholder image */}
                                 <div className="flex items-center justify-center h-full w-full ">
-                                  <Image
-                                    src="/logo.jpg"
-                                    alt="Logo placeholder"
-                                    width={120}
-                                    height={120}
-                                    className="object-contain transition-transform duration-300 group-hover:scale-110"
-                                  />
+                                  {service.primaryImageUrl ? (
+                                    <Image
+                                      src={getFullImageUrl(
+                                        service.primaryImageUrl
+                                      )}
+                                      alt={service.title}
+                                      fill
+                                      className="object-cover rounded-lg group-hover:scale-105 transition-transform duration-300"
+                                    />
+                                  ) : (
+                                    <div className="flex items-center justify-center h-full w-full bg-gray-100">
+                                      <Image
+                                        src="/logo.jpg"
+                                        alt="Logo placeholder"
+                                        width={120}
+                                        height={120}
+                                        className="object-contain"
+                                      />
+                                    </div>
+                                  )}
                                 </div>
 
                                 {/* Gradient overlay at the bottom */}
@@ -801,19 +863,6 @@ export default function ProfilePage() {
         <div className="space-y-6">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             {/* Payment Information */}
-            <div className="bg-white rounded-2xl h-2/3 p-4 pt-2 border border-gray-200">
-              <h2 className="text-gray-900 font-medium mb-4 pb-2 border-b border-gray-300">
-                Donnée de paiement
-              </h2>
-              <div className="text-center">
-                <p className="text-sm text-gray-500 mb-2">
-                  {subscriptionData.paymentMethod}
-                </p>
-                <button className="bg-[#38AC8E] text-white w-full py-3 rounded-xl hover:bg-teal-600 cursor-pointer">
-                  METTRE À JOUR
-                </button>
-              </div>
-            </div>
 
             {/* Subscription Status */}
             <div className="bg-white rounded-2xl p-4 pt-2 border border-gray-200">
@@ -837,22 +886,21 @@ export default function ProfilePage() {
                 <p className="text-sm text-gray-700 font-medium mb-1">
                   ÉTAT DE L'ABONNEMENT
                 </p>
-                <p className="text-sm text-gray-500">
-                  Renouvellement prévu le {subscriptionData.renewalDate}
-                </p>
+                {subscription ? (
+                  <p className="text-sm text-gray-500">
+                    Renouvellement prévu le{" "}
+                    {new Date(subscription.endDate).toLocaleDateString("fr-FR")}
+                  </p>
+                ) : (
+                  <p className="text-red-500">Aucune souscription active</p>
+                )}
               </div>
             </div>
-          </div>
-
-          {/* Payment History - Horizontally Scrollable Table */}
-          <div className="bg-white rounded-2xl p-4 pt-2 border border-gray-200">
-            <h2 className="text-gray-900 font-medium mb-4 pb-2 border-b border-gray-300">
-              Historique de paiements
-            </h2>
-
-            {/* Desktop view - regular table */}
-            <div className="hidden md:block">
-              <table className="w-2/5 text-sm">
+            <div className="bg-white rounded-2xl p-4 pt-2 border border-gray-200">
+              <h2 className="text-gray-900 font-medium mb-4 pb-2 border-b border-gray-300">
+                Historique de paiements
+              </h2>
+              <table className="text-sm">
                 <thead>
                   <tr>
                     <th className="text-left py-1 pb-0 text-base text-gray-600 font-medium">
@@ -870,66 +918,33 @@ export default function ProfilePage() {
                   </tr>
                 </thead>
                 <tbody>
-                  {subscriptionData.paymentHistory.map((payment, index) => (
-                    <tr key={index}>
+                  {subscription ? (
+                    <tr>
                       <td className="py-2 pt-1 pr-6 font-semibold">
-                        {payment.date}
+                        {new Date(subscription.startDate).toLocaleDateString(
+                          "fr-FR"
+                        )}
                       </td>
                       <td className="py-2 pt-1 pr-6 font-semibold">
-                        {payment.description}
+                        Abonnement annuel e-change
                       </td>
-                      <td className="py-2 pt-1 pr-6 font-semibold">
-                        {payment.amount}
-                      </td>
+                      <td className="py-2 pt-1 pr-6 font-semibold">20 €</td>
                       <td className="py-2 pt-1 text-[#F4C300] font-semibold">
-                        {payment.echangesReceived}
+                        99
                       </td>
                     </tr>
-                  ))}
+                  ) : (
+                    <tr>
+                      <td
+                        colSpan={4}
+                        className="text-center text-gray-500 py-4"
+                      >
+                        Aucune souscription trouvée.
+                      </td>
+                    </tr>
+                  )}
                 </tbody>
               </table>
-            </div>
-
-            {/* Mobile view - horizontally scrollable table */}
-            <div className="md:hidden overflow-x-auto pb-2">
-              <div className="min-w-[600px]">
-                <table className="w-full text-sm">
-                  <thead>
-                    <tr>
-                      <th className="text-left py-1 pb-0 text-base text-gray-600 font-medium">
-                        DATE
-                      </th>
-                      <th className="text-left py-1 pb-0 text-base text-gray-600 font-medium">
-                        DESCRIPTION
-                      </th>
-                      <th className="text-left py-1 pb-0 text-base text-gray-600 font-medium">
-                        SOMME
-                      </th>
-                      <th className="text-left py-1 pb-0 text-base text-gray-600 font-medium">
-                        E-CHANGES REÇUS
-                      </th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {subscriptionData.paymentHistory.map((payment, index) => (
-                      <tr key={index}>
-                        <td className="py-2 pt-1 pr-6 font-semibold">
-                          {payment.date}
-                        </td>
-                        <td className="py-2 pt-1 pr-6 font-semibold">
-                          {payment.description}
-                        </td>
-                        <td className="py-2 pt-1 pr-6 font-semibold">
-                          {payment.amount}
-                        </td>
-                        <td className="py-2 pt-1 text-[#F4C300] font-semibold">
-                          {payment.echangesReceived}
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
             </div>
           </div>
         </div>

@@ -62,6 +62,7 @@ interface AuthContextType {
   notifications: any;
   unreadCount: number;
   setUnreadCount?: (value: number) => void;
+  refreshUserProfile: () => Promise<void>;
 }
 
 interface BillingDetails {
@@ -118,6 +119,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setToken(null);
       localStorage.removeItem("token");
       throw error;
+    }
+  };
+  const refreshUserProfile = async () => {
+    const currentToken = localStorage.getItem("token");
+    if (currentToken) {
+      await fetchUserProfile(currentToken);
     }
   };
 
@@ -471,6 +478,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         notifications,
         unreadCount,
         setUnreadCount,
+        refreshUserProfile,
       }}
     >
       {children}

@@ -4,8 +4,10 @@
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import apiClient from "../api/apiClient";
-import WalletWidget from "../components/WalletWidget";
 import ConfirmCompleteModal from "../components/ConfirmCompleteModal";
+import TransactionStatusModal from "./TransactionStatusModal";
+import ProgressTimeline from "./ProgressTimeline";
+
 // Define TypeScript interfaces
 interface Transaction {
   id: number;
@@ -15,6 +17,7 @@ interface Transaction {
   createdAt: string;
   updatedAt: string | null;
   role: "buyer" | "seller";
+  type: string;
   otherParty: string;
   buyerValidated: boolean;
   sellerValidated: boolean;
@@ -81,6 +84,100 @@ const StatusBadge: React.FC<{ status: string }> = ({ status }) => {
   );
 };
 
+// Error notification component
+const ErrorNotification: React.FC<{
+  message: string;
+  isVisible: boolean;
+  onClose: () => void;
+}> = ({ message, isVisible, onClose }) => {
+  useEffect(() => {
+    if (isVisible) {
+      const timer = setTimeout(() => {
+        onClose();
+      }, 5000);
+      return () => clearTimeout(timer);
+    }
+  }, [isVisible, onClose]);
+
+  if (!isVisible) return null;
+
+  return (
+    <div className="fixed top-4 right-4 z-100 max-w-md">
+      <div className="bg-red-500 text-white px-6 py-4 rounded-lg shadow-lg flex items-center justify-between">
+        <div className="flex items-center">
+          <svg className="w-5 h-5 mr-2" fill="currentColor" viewBox="0 0 20 20">
+            <path
+              fillRule="evenodd"
+              d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z"
+              clipRule="evenodd"
+            />
+          </svg>
+          <span className="text-sm">{message}</span>
+        </div>
+        <button
+          onClick={onClose}
+          className="ml-4 text-white hover:text-gray-200"
+        >
+          <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+            <path
+              fillRule="evenodd"
+              d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z"
+              clipRule="evenodd"
+            />
+          </svg>
+        </button>
+      </div>
+    </div>
+  );
+};
+
+// Success notification component
+const SuccessNotification: React.FC<{
+  message: string;
+  isVisible: boolean;
+  onClose: () => void;
+}> = ({ message, isVisible, onClose }) => {
+  useEffect(() => {
+    if (isVisible) {
+      const timer = setTimeout(() => {
+        onClose();
+      }, 3000);
+      return () => clearTimeout(timer);
+    }
+  }, [isVisible, onClose]);
+
+  if (!isVisible) return null;
+
+  return (
+    <div className="fixed top-4 right-4 z-50 max-w-md">
+      <div className="bg-green-500 text-white px-6 py-4 rounded-lg shadow-lg flex items-center justify-between">
+        <div className="flex items-center">
+          <svg className="w-5 h-5 mr-2" fill="currentColor" viewBox="0 0 20 20">
+            <path
+              fillRule="evenodd"
+              d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z"
+              clipRule="evenodd"
+            />
+          </svg>
+          <span className="text-sm">{message}</span>
+        </div>
+        <button
+          onClick={onClose}
+          className="ml-4 text-white hover:text-gray-200"
+        >
+          <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+            <path
+              fillRule="evenodd"
+              d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z"
+              clipRule="evenodd"
+            />
+          </svg>
+        </button>
+      </div>
+    </div>
+  );
+};
+
 export default function TransactionsPage() {
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [filteredTransactions, setFilteredTransactions] = useState<
@@ -95,6 +192,36 @@ export default function TransactionsPage() {
   const [sortOrder, setSortOrder] = useState<"asc" | "desc">("asc");
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedTxId, setSelectedTxId] = useState<number | null>(null);
+  const [showStatusModal, setShowStatusModal] = useState(false);
+  const [selectedStatus, setSelectedStatus] = useState<string | null>(null);
+
+  // New state for notifications
+  const [errorNotification, setErrorNotification] = useState<{
+    message: string;
+    isVisible: boolean;
+  }>({
+    message: "",
+    isVisible: false,
+  });
+  const [successNotification, setSuccessNotification] = useState<{
+    message: string;
+    isVisible: boolean;
+  }>({
+    message: "",
+    isVisible: false,
+  });
+
+  const selectedTransaction =
+    filteredTransactions.find((tx) => tx.id === selectedTxId) || null;
+
+  // Helper functions for notifications
+  const showError = (message: string) => {
+    setErrorNotification({ message, isVisible: true });
+  };
+
+  const showSuccess = (message: string) => {
+    setSuccessNotification({ message, isVisible: true });
+  };
 
   const openModal = (txId: number) => {
     setSelectedTxId(txId);
@@ -108,8 +235,13 @@ export default function TransactionsPage() {
       await apiClient.post(`/api/transactions/${selectedTxId}/complete`, {});
       await loadTransactions();
       setIsModalOpen(false);
-    } catch (err) {
-      alert("Erreur lors de la complétion.");
+      showSuccess("Transaction complétée avec succès!");
+    } catch (error: any) {
+      const errorMessage =
+        error?.response?.data?.error ||
+        error?.response?.data?.message || // <- THIS line reads the correct key
+        "Erreur lors de la complétion de la transaction.";
+      showError(errorMessage);
     }
   };
 
@@ -137,13 +269,14 @@ export default function TransactionsPage() {
       const data = await apiClient.get("/api/transactions");
       setTransactions(data as Transaction[]);
       setFilteredTransactions(data as Transaction[]);
-
       setError(null);
-    } catch (err) {
-      setError(
-        "Erreur lors du chargement des transactions. Veuillez réessayer plus tard."
-      );
-      // console.error("Error fetching transactions:", err);
+    } catch (error: any) {
+      const errorMessage =
+        error?.response?.data?.message ||
+        error?.response?.data?.error ||
+        "Erreur lors du chargement des transactions. Veuillez réessayer plus tard.";
+      setError(errorMessage);
+      showError(errorMessage);
     } finally {
       setIsLoading(false);
     }
@@ -176,7 +309,7 @@ export default function TransactionsPage() {
     }).format(date);
   };
 
-  // Action handlers
+  // Action handlers with better error handling
   const handleUpdateStatus = async (
     transactionId: number,
     newStatus: string,
@@ -186,8 +319,7 @@ export default function TransactionsPage() {
 
     try {
       if (newStatus === "validate") {
-        var data: any;
-        data = await apiClient.post(
+        const data: any = await apiClient.post(
           `/api/transactions/${transactionId}/validate`,
           ""
         );
@@ -203,17 +335,29 @@ export default function TransactionsPage() {
             : transaction
         );
         setTransactions(updatedTransactions);
-
+        showSuccess("Transaction validée avec succès!");
         return;
       } else if (newStatus === "complete") {
         await apiClient.post(`/api/transactions/${transactionId}/complete`, {});
+        showSuccess("Transaction complétée avec succès!");
+      } else if (newStatus === "delivery") {
+        await apiClient.put(`/api/transactions/${transactionId}/status`, {
+          status: newStatus,
+        });
+        showSuccess("Transaction marquée comme livrée!");
+      } else if (newStatus === "failure") {
+        await apiClient.put(`/api/transactions/${transactionId}/status`, {
+          status: newStatus,
+        });
+        showSuccess("Transaction marquée comme échouée.");
       } else {
         await apiClient.put(`/api/transactions/${transactionId}/status`, {
           status: newStatus,
         });
+        showSuccess("Statut de la transaction mis à jour!");
       }
 
-      // Update local
+      // Update local state
       const updatedTransactions = transactions.map((transaction) =>
         transaction.id === transactionId
           ? { ...transaction, status: newStatus }
@@ -221,9 +365,16 @@ export default function TransactionsPage() {
       );
 
       setTransactions(updatedTransactions);
-    } catch (error) {
-      //   console.error("Error updating transaction:", error);
-      alert("Échec de la mise à jour du statut. Veuillez réessayer.");
+    } catch (error: any) {
+      /* console.error(
+        "Error loading transactions:",
+        error?.response?.data?.error
+      ); */
+      const errorMessage =
+        error?.response?.data?.message ||
+        error?.response?.data?.error ||
+        `Échec de la mise à jour du statut. Veuillez réessayer.`;
+      showError(errorMessage);
     }
   };
 
@@ -244,9 +395,14 @@ export default function TransactionsPage() {
         );
 
         setTransactions(updatedTransactions);
-      } catch (error) {
-        //   console.error("Error cancelling transaction:", error);
-        alert("Échec de l'annulation de la transaction. Veuillez réessayer.");
+        showSuccess("Transaction annulée avec succès.");
+      } catch (error: any) {
+        //  console.error("Error loading transactions:", error);
+        const errorMessage =
+          error?.response?.data?.message ||
+          error?.response?.data?.error ||
+          "Échec de l'annulation de la transaction. Veuillez réessayer.";
+        showError(errorMessage);
       }
     }
   };
@@ -257,9 +413,9 @@ export default function TransactionsPage() {
 
   // Handle wallet energy used (refresh transactions)
   const handleEnergyUsed = () => {
-    // Reload transactions after energy is used
     loadTransactions();
   };
+
   const toggleSort = (field: "createdAt" | "updatedAt" | "energyAmount") => {
     if (sortField === field) {
       setSortOrder(sortOrder === "asc" ? "desc" : "asc");
@@ -270,260 +426,385 @@ export default function TransactionsPage() {
   };
 
   return (
-    <div className="container mx-auto px-4 py-8">
-      <div className="mb-6">
-        <h1 className="text-2xl font-bold text-gray-900">Mes Transactions</h1>
-        <p className="text-gray-600 mt-1">
-          Consultez et gérez toutes vos transactions d'énergie
-        </p>
-      </div>
-      {/* Filter tabs */}
-      <div className="mb-6">
-        <div className="flex border-b border-gray-200">
-          <button
-            className={`py-3 px-6 border-b-2 font-medium text-sm ${
-              activeFilter === "all"
-                ? "border-blue-500 text-blue-600"
-                : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
-            }`}
-            onClick={() => setActiveFilter("all")}
-          >
-            Toutes ({transactions.length})
-          </button>
-          <button
-            className={`py-3 px-6 border-b-2 font-medium text-sm ${
-              activeFilter === "buyer"
-                ? "border-blue-500 text-blue-600"
-                : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
-            }`}
-            onClick={() => setActiveFilter("buyer")}
-          >
-            Acheteur ({buyerCount})
-          </button>
-          <button
-            className={`py-3 px-6 border-b-2 font-medium text-sm ${
-              activeFilter === "seller"
-                ? "border-blue-500 text-blue-600"
-                : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
-            }`}
-            onClick={() => setActiveFilter("seller")}
-          >
-            Vendeur ({sellerCount})
-          </button>
-        </div>
-      </div>
+    <>
+      {/* Notifications */}
+      <ErrorNotification
+        message={errorNotification.message}
+        isVisible={errorNotification.isVisible}
+        onClose={() => setErrorNotification({ message: "", isVisible: false })}
+      />
+      <SuccessNotification
+        message={successNotification.message}
+        isVisible={successNotification.isVisible}
+        onClose={() =>
+          setSuccessNotification({ message: "", isVisible: false })
+        }
+      />
 
-      {isLoading ? (
-        <div className="flex justify-center items-center py-10">
-          <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500"></div>
-        </div>
-      ) : error ? (
-        <div className="bg-red-50 p-4 rounded-md">
-          <p className="text-red-700">{error}</p>
-        </div>
-      ) : filteredTransactions.length === 0 ? (
-        <div className="bg-white shadow rounded-lg p-6 text-center">
-          <p className="text-gray-600">
-            {activeFilter === "all"
-              ? "Vous n'avez aucune transaction."
-              : activeFilter === "buyer"
-              ? "Vous n'avez aucune transaction en tant qu'acheteur."
-              : "Vous n'avez aucune transaction en tant que vendeur."}
+      <div className="container mx-auto px-4 py-8">
+        <div className="mb-6">
+          <h1 className="text-2xl font-bold text-gray-900">Mes Transactions</h1>
+          <p className="text-gray-600 mt-1">
+            Consultez et gérez toutes vos transactions d'énergie
           </p>
-          <Link href="/services">
-            <button className="mt-4 inline-block bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 transition">
-              Parcourir les Services
-            </button>
-          </Link>
         </div>
-      ) : (
-        <div className="bg-white shadow-md rounded-lg overflow-hidden">
-          <div className="overflow-x-auto">
-            <table className="min-w-full divide-y divide-gray-200">
-              <thead className="bg-gray-50">
-                <tr>
-                  <th
-                    scope="col"
-                    className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
-                  >
-                    Service
-                  </th>
-                  <th
-                    scope="col"
-                    className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
-                  >
-                    Rôle
-                  </th>
-                  <th
-                    scope="col"
-                    className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
-                  >
-                    Autre Partie
-                  </th>
-                  <th
-                    onClick={() => toggleSort("energyAmount")}
-                    className="cursor-pointer px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
-                  >
-                    Énergie
-                  </th>
-                  <th
-                    scope="col"
-                    className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
-                  >
-                    Statut
-                  </th>
-                  <th
-                    onClick={() => toggleSort("createdAt")}
-                    className="cursor-pointer px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
-                  >
-                    Créé le
-                  </th>
-                  <th
-                    onClick={() => toggleSort("updatedAt")}
-                    className="cursor-pointer px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
-                  >
-                    Dernière mise à jour
-                  </th>
-                  <th
-                    scope="col"
-                    className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
-                  >
-                    Actions
-                  </th>
-                </tr>
-              </thead>
-              <tbody className="bg-white divide-y divide-gray-200">
-                {filteredTransactions.map((transaction) => (
-                  <tr key={transaction.id} className="hover:bg-gray-50">
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="text-sm font-medium text-gray-900">
-                        {transaction.serviceTitle}
-                      </div>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div
-                        className={`text-sm font-medium ${
-                          transaction.role === "buyer"
-                            ? "text-blue-600"
-                            : "text-green-600"
-                        }`}
-                      >
-                        {transaction.role === "buyer" ? "Acheteur" : "Vendeur"}
-                      </div>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="text-sm text-gray-900">
-                        {transaction.otherParty}
-                      </div>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="text-sm text-gray-900">
-                        {transaction.energyAmount}
-                      </div>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <StatusBadge status={transaction.status} />
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="text-sm text-gray-500">
-                        {formatDate(transaction.createdAt)}
-                      </div>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="text-sm text-gray-500">
-                        {transaction.updatedAt
-                          ? formatDate(transaction.updatedAt)
-                          : "-"}
-                      </div>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium space-x-2">
-                      {/* VALIDER */}
-                      {!(transaction.role === "buyer"
-                        ? transaction.buyerValidated
-                        : transaction.sellerValidated) && (
-                        <button
-                          onClick={(e) =>
-                            handleUpdateStatus(transaction.id, "validate", e)
-                          }
-                          className="inline-block px-3 py-1 bg-green-500 text-white rounded hover:bg-green-600"
-                        >
-                          Valider
-                        </button>
-                      )}
 
-                      {/* LIVRER (only seller) */}
-                      {transaction.role === "seller" &&
-                        transaction.status === "validation" && (
-                          <button
-                            onClick={(e) =>
-                              handleUpdateStatus(transaction.id, "delivery", e)
-                            }
-                            className="inline-block px-3 py-1 bg-blue-500 text-white rounded hover:bg-blue-600"
-                          >
-                            Livrer
-                          </button>
-                        )}
-
-                      {/* COMPLETER (only buyer) */}
-                      {transaction.role === "buyer" &&
-                        transaction.status === "validation" && (
-                          <button
-                            onClick={() => openModal(transaction.id)}
-                            className="inline-block px-3 py-1 bg-indigo-500 text-white rounded hover:bg-indigo-600"
-                          >
-                            Compléter
-                          </button>
-                        )}
-
-                      {/* ÉCHOUER (both roles, certain statuses) */}
-                      {["success", "delivery"].includes(transaction.status) && (
-                        <button
-                          onClick={(e) =>
-                            handleUpdateStatus(transaction.id, "failure", e)
-                          }
-                          className="inline-block px-3 py-1 bg-red-500 text-white rounded hover:bg-red-600"
-                        >
-                          Échouer
-                        </button>
-                      )}
-
-                      {/* ANNULER (both roles, early statuses) */}
-                      {["created", "negotiation"].includes(
-                        transaction.status
-                      ) && (
-                        <button
-                          onClick={(e) => handleCancel(transaction.id, e)}
-                          className="inline-block px-3 py-1 bg-gray-300 text-gray-800 rounded hover:bg-gray-400"
-                        >
-                          Annuler
-                        </button>
-                      )}
-
-                      {/* No Actions */}
-                      {![
-                        "created",
-                        "negotiation",
-                        "success",
-                        "delivery",
-                        "validation",
-                      ].includes(transaction.status) &&
-                        transaction.buyerValidated &&
-                        transaction.sellerValidated && (
-                          <span className="text-gray-400">Aucune action</span>
-                        )}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+        {/* Filter tabs */}
+        <div className="mb-6">
+          <div className="flex border-b border-gray-200">
+            <button
+              className={`py-3 px-6 border-b-2 font-medium text-sm ${
+                activeFilter === "all"
+                  ? "border-blue-500 text-blue-600"
+                  : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
+              }`}
+              onClick={() => setActiveFilter("all")}
+            >
+              Toutes ({transactions.length})
+            </button>
+            <button
+              className={`py-3 px-6 border-b-2 font-medium text-sm ${
+                activeFilter === "buyer"
+                  ? "border-blue-500 text-blue-600"
+                  : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
+              }`}
+              onClick={() => setActiveFilter("buyer")}
+            >
+              Acheteur ({buyerCount})
+            </button>
+            <button
+              className={`py-3 px-6 border-b-2 font-medium text-sm ${
+                activeFilter === "seller"
+                  ? "border-blue-500 text-blue-600"
+                  : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
+              }`}
+              onClick={() => setActiveFilter("seller")}
+            >
+              Vendeur ({sellerCount})
+            </button>
           </div>
         </div>
-      )}
-      <ConfirmCompleteModal
-        isOpen={isModalOpen}
-        onClose={() => setIsModalOpen(false)}
-        onConfirm={handleComplete}
-      />
-    </div>
+
+        {isLoading ? (
+          <div className="flex justify-center items-center py-10">
+            <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500"></div>
+          </div>
+        ) : error ? (
+          <div className="bg-red-50 p-4 rounded-md">
+            <p className="text-red-700">{error}</p>
+          </div>
+        ) : filteredTransactions.length === 0 ? (
+          <div className="bg-white shadow rounded-lg p-6 text-center">
+            <p className="text-gray-600">
+              {activeFilter === "all"
+                ? "Vous n'avez aucune transaction."
+                : activeFilter === "buyer"
+                ? "Vous n'avez aucune transaction en tant qu'acheteur."
+                : "Vous n'avez aucune transaction en tant que vendeur."}
+            </p>
+            <Link href="/services">
+              <button className="mt-4 inline-block bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 transition">
+                Parcourir les Services
+              </button>
+            </Link>
+          </div>
+        ) : (
+          <div className="bg-white shadow-md rounded-lg overflow-hidden">
+            <div className="overflow-x-auto">
+              <table className="min-w-full divide-y divide-gray-200">
+                <thead className="bg-gray-50">
+                  <tr>
+                    <th
+                      scope="col"
+                      className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+                    >
+                      Service
+                    </th>
+                    <th
+                      scope="col"
+                      className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+                    >
+                      Rôle
+                    </th>
+                    <th
+                      scope="col"
+                      className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+                    >
+                      Autre Partie
+                    </th>
+                    <th
+                      onClick={() => toggleSort("energyAmount")}
+                      className="cursor-pointer px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+                    >
+                      Énergie
+                    </th>
+                    <th
+                      scope="col"
+                      className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+                    >
+                      Statut
+                    </th>
+                    <th
+                      onClick={() => toggleSort("createdAt")}
+                      className="cursor-pointer px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+                    >
+                      Créé le
+                    </th>
+                    <th
+                      onClick={() => toggleSort("updatedAt")}
+                      className="cursor-pointer px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+                    >
+                      Dernière mise à jour
+                    </th>
+                    <th
+                      scope="col"
+                      className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+                    >
+                      Actions
+                    </th>
+                  </tr>
+                </thead>
+                <tbody className="bg-white divide-y divide-gray-200">
+                  {filteredTransactions.map((transaction) => (
+                    <tr key={transaction.id} className="hover:bg-gray-50">
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <div className="text-sm font-medium text-gray-900">
+                          {transaction.serviceTitle}
+                        </div>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <div
+                          className={`text-sm font-medium ${
+                            transaction.role === "buyer"
+                              ? "text-blue-600"
+                              : "text-green-600"
+                          }`}
+                        >
+                          {transaction.role === "buyer"
+                            ? "Acheteur"
+                            : "Vendeur"}
+                        </div>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <div className="text-sm text-gray-900">
+                          {transaction.otherParty}
+                        </div>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <div className="text-sm text-gray-900">
+                          {transaction.energyAmount}
+                        </div>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <StatusBadge status={transaction.status} />
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <div className="text-sm text-gray-500">
+                          {formatDate(transaction.createdAt)}
+                        </div>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <div className="text-sm text-gray-500">
+                          {transaction.updatedAt
+                            ? formatDate(transaction.updatedAt)
+                            : "-"}
+                        </div>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <div className="flex flex-wrap gap-1">
+                          {/* VALIDER */}
+                          {!(transaction.role === "buyer"
+                            ? transaction.buyerValidated
+                            : transaction.sellerValidated) && (
+                            <button
+                              onClick={(e) =>
+                                handleUpdateStatus(
+                                  transaction.id,
+                                  "validate",
+                                  e
+                                )
+                              }
+                              title="Cliquez pour valider cette transaction"
+                              className="inline-flex items-center px-2 py-1 text-xs font-medium bg-green-500 text-white rounded hover:bg-green-600 transition-colors"
+                            >
+                              <svg
+                                className="w-3 h-3 mr-1"
+                                fill="currentColor"
+                                viewBox="0 0 20 20"
+                              >
+                                <path
+                                  fillRule="evenodd"
+                                  d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
+                                  clipRule="evenodd"
+                                />
+                              </svg>
+                              Valider
+                            </button>
+                          )}
+
+                          {/* LIVRER */}
+                          {transaction.role === "seller" &&
+                            transaction.status === "validation" &&
+                            transaction.buyerValidated &&
+                            transaction.sellerValidated && (
+                              <button
+                                onClick={(e) => {
+                                  if (
+                                    confirm(
+                                      "Confirmez-vous la livraison de cette transaction ?"
+                                    )
+                                  ) {
+                                    handleUpdateStatus(
+                                      transaction.id,
+                                      "delivery",
+                                      e
+                                    );
+                                  }
+                                }}
+                                title="Marquer comme livré"
+                                className="inline-flex items-center px-2 py-1 text-xs font-medium bg-blue-500 text-white rounded hover:bg-blue-600 transition-colors"
+                              >
+                                <svg
+                                  className="w-3 h-3 mr-1"
+                                  fill="currentColor"
+                                  viewBox="0 0 20 20"
+                                >
+                                  <path d="M8 16.5a1.5 1.5 0 11-3 0 1.5 1.5 0 013 0zM15 16.5a1.5 1.5 0 11-3 0 1.5 1.5 0 013 0z" />
+                                  <path d="M3 4a1 1 0 00-1 1v10a1 1 0 001 1h1.05a2.5 2.5 0 014.9 0H10a1 1 0 001-1V5a1 1 0 00-1-1H3zM14 7a1 1 0 00-1 1v6.05A2.5 2.5 0 0115.95 16H17a1 1 0 001-1V8a1 1 0 00-1-1h-3z" />
+                                </svg>
+                                Livrer
+                              </button>
+                            )}
+
+                          {/* COMPLETER */}
+                          {transaction.role === "buyer" &&
+                            ["validation", "delivery"].includes(
+                              transaction.status
+                            ) && (
+                              <button
+                                onClick={() => openModal(transaction.id)}
+                                title="Finaliser la transaction"
+                                className="inline-flex items-center px-2 py-1 text-xs font-medium bg-indigo-500 text-white rounded hover:bg-indigo-600 transition-colors"
+                              >
+                                <svg
+                                  className="w-3 h-3 mr-1"
+                                  fill="currentColor"
+                                  viewBox="0 0 20 20"
+                                >
+                                  <path
+                                    fillRule="evenodd"
+                                    d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z"
+                                    clipRule="evenodd"
+                                  />
+                                </svg>
+                                Compléter
+                              </button>
+                            )}
+
+                          {/* ÉCHOUER */}
+                          {["success", "delivery"].includes(
+                            transaction.status
+                          ) && (
+                            <button
+                              onClick={(e) => {
+                                if (
+                                  confirm(
+                                    "Confirmez-vous l'échec de cette transaction ?"
+                                  )
+                                ) {
+                                  handleUpdateStatus(
+                                    transaction.id,
+                                    "failure",
+                                    e
+                                  );
+                                }
+                              }}
+                              title="Marquer cette transaction comme échouée"
+                              className="inline-flex items-center px-2 py-1 text-xs font-medium bg-red-500 text-white rounded hover:bg-red-600 transition-colors"
+                            >
+                              <svg
+                                className="w-3 h-3 mr-1"
+                                fill="currentColor"
+                                viewBox="0 0 20 20"
+                              >
+                                <path
+                                  fillRule="evenodd"
+                                  d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z"
+                                  clipRule="evenodd"
+                                />
+                              </svg>
+                              Échouer
+                            </button>
+                          )}
+
+                          {/* ANNULER */}
+                          {["created", "negotiation"].includes(
+                            transaction.status
+                          ) && (
+                            <button
+                              onClick={(e) => handleCancel(transaction.id, e)}
+                              title="Annuler la transaction"
+                              className="inline-flex items-center px-2 py-1 text-xs font-medium bg-gray-300 text-gray-800 rounded hover:bg-gray-400 transition-colors"
+                            >
+                              <svg
+                                className="w-3 h-3 mr-1"
+                                fill="currentColor"
+                                viewBox="0 0 20 20"
+                              >
+                                <path
+                                  fillRule="evenodd"
+                                  d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z"
+                                  clipRule="evenodd"
+                                />
+                              </svg>
+                              Annuler
+                            </button>
+                          )}
+
+                          {/* DÉTAILS */}
+                          <button
+                            onClick={() => {
+                              setSelectedStatus(transaction.status);
+                              setShowStatusModal(true);
+                              setSelectedTxId(transaction.id);
+                            }}
+                            title="Voir les détails de la transaction"
+                            className="inline-flex items-center px-2 py-1 text-xs font-medium bg-gray-100 text-gray-800 rounded hover:bg-gray-200 transition-colors"
+                          >
+                            <svg
+                              className="w-3 h-3 mr-1"
+                              fill="currentColor"
+                              viewBox="0 0 20 20"
+                            >
+                              <path d="M10 12a2 2 0 100-4 2 2 0 000 4z" />
+                              <path
+                                fillRule="evenodd"
+                                d="M.458 10C1.732 5.943 5.522 3 10 3s8.268 2.943 9.542 7c-1.274 4.057-5.064 7-9.542 7S1.732 14.057.458 10zM14 10a4 4 0 11-8 0 4 4 0 018 0z"
+                                clipRule="evenodd"
+                              />
+                            </svg>
+                            Détails
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+            <TransactionStatusModal
+              isOpen={showStatusModal}
+              onClose={() => setShowStatusModal(false)}
+              transaction={selectedTransaction}
+            />
+          </div>
+        )}
+        <ConfirmCompleteModal
+          isOpen={isModalOpen}
+          onClose={() => setIsModalOpen(false)}
+          onConfirm={handleComplete}
+        />
+      </div>
+    </>
   );
 }

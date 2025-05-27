@@ -21,6 +21,15 @@ interface PaginationData {
   limit: number;
   pages: number;
 }
+interface WalletResponse {
+  transactions: Transaction[];
+  pagination: {
+    total: number;
+    page: number;
+    limit: number;
+    pages: number;
+  };
+}
 
 type FilterType = "all" | "deposit" | "withdrawal" | "transfer" | "campaign";
 
@@ -90,27 +99,27 @@ export default function WalletPage() {
       setIsLoading(true);
 
       let endpoint = `/api/wallet/transactions`;
-
-      // Add type filter if not "all"
       if (type !== "all") {
         endpoint = `/api/wallet/transactions/${type}`;
       }
 
-      const response = await apiClient.get<{
-        data: any;
-        transactions: Transaction[];
-        pagination: { currentPage: number; totalPages: number };
-      }>(`${endpoint}?page=${page}&limit=${limit}`);
+      const url = `${endpoint}?page=${page}&limit=${limit}`;
 
-      setTransactions(response.data.transactions);
-      setPagination(response.data.pagination);
+      const response = await apiClient.get<WalletResponse>(url);
 
+      // If the response isn't wrapped in `.data`, use it directly
+      const { transactions, pagination } = response;
+      setTransactions(transactions);
+      setPagination(pagination);
       setError(null);
-    } catch (err) {
+    } catch (err: any) {
+      console.error(
+        "❌ API call failed:",
+        err.response?.data || err.message || err
+      );
       setError(
         "Erreur lors du chargement des transactions. Veuillez réessayer plus tard."
       );
-      //  console.error("Error fetching wallet transactions:", err);
     } finally {
       setIsLoading(false);
     }
@@ -159,8 +168,6 @@ export default function WalletPage() {
     { value: "all", label: "Toutes" },
     { value: "deposit", label: "Dépôts" },
     { value: "withdrawal", label: "Retraits" },
-    { value: "transfer", label: "Transferts" },
-    { value: "campaign", label: "Campagnes" },
   ];
 
   // Get currently selected filter label
@@ -261,26 +268,6 @@ export default function WalletPage() {
             onClick={() => setActiveFilter("withdrawal")}
           >
             Retraits
-          </button>
-          <button
-            className={`py-3 px-6 border-b-2 font-medium text-sm ${
-              activeFilter === "transfer"
-                ? "border-blue-500 text-blue-600"
-                : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
-            }`}
-            onClick={() => setActiveFilter("transfer")}
-          >
-            Transferts
-          </button>
-          <button
-            className={`py-3 px-6 border-b-2 font-medium text-sm ${
-              activeFilter === "campaign"
-                ? "border-blue-500 text-blue-600"
-                : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
-            }`}
-            onClick={() => setActiveFilter("campaign")}
-          >
-            Campagnes
           </button>
         </div>
       </div>

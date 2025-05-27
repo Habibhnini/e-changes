@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useAuth } from "../contexts/AuthContext";
 import LoginForm from "../components/AuthForms/LoginForm";
@@ -44,12 +44,18 @@ export default function AuthPage() {
 
   // Files for identity verification
   const [photoId, setPhotoId] = useState<File | null>(null);
+  const { user, loading } = useAuth(); // your auth context
 
   const { login, register, uploadIdentityDocuments, completeSubscription } =
     useAuth();
   const router = useRouter();
   const searchParams = useSearchParams();
-
+  useEffect(() => {
+    if (!loading && user) {
+      // User is already logged in, redirect
+      router.replace("/explorer"); // or wherever you want
+    }
+  }, [user, loading, router]);
   const handleLoginSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
@@ -90,7 +96,6 @@ export default function AuthPage() {
       await apiClient.forgotPassword(resetEmail);
       setResetSuccess(true);
     } catch (err) {
-      console.error("Forgot password error:", err);
       setError(
         err instanceof Error
           ? err.message
@@ -194,13 +199,14 @@ export default function AuthPage() {
       } else {
         throw new Error("No token received");
       }
-    } catch (err) {
-      // console.error("Registration error:", err);
-      setError(
-        err instanceof Error
-          ? err.message
-          : "Une erreur est survenue lors de l'inscription"
-      );
+    } catch (err: any) {
+      if (err.status === 409) {
+        setError("Cet email est déjà utilisé");
+      } else if (err.message) {
+        setError(err.message);
+      } else {
+        setError("Une erreur est survenue lors de l'inscription");
+      }
     } finally {
       setIsLoading(false);
     }

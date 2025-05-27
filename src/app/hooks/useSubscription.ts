@@ -26,7 +26,6 @@ export function useSubscriptionStatus() {
           setIsActive(data.isActive);
         }
       } catch (err) {
-        console.error("Erreur de souscription:", err);
       } finally {
         setLoading(false);
       }

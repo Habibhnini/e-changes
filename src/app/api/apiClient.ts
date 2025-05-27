@@ -1,3 +1,11 @@
+import { getAuthToken } from "../utils/auth";
+interface ServiceImage {
+  id: number;
+  url: string;
+  isPrimary: boolean;
+  sortOrder: number;
+  filename?: string; // Optional, in case your API returns this
+}
 // First, let's define your ServiceDetail interface to match what your component expects
 interface ServiceDetail {
   id: number;
@@ -7,6 +15,8 @@ interface ServiceDetail {
   type: string;
   status: string;
   createdAt: string;
+  images?: ServiceImage[]; // Add images array
+  primaryImageUrl?: string; // Add primary image URL
   category: {
     id: number;
     name: string;
@@ -94,48 +104,31 @@ class ApiClient {
     return headers;
   }
 
-  async get<T>(url: string, includeAuth = true): Promise<T> {
-    const response = await fetch(url, {
-      method: "GET",
-      headers: this.getHeaders(includeAuth),
-    });
-
-    if (!response.ok) {
-      if (response.status === 401) {
-        // Handle unauthorized (expired token, etc.)
-        if (typeof window !== "undefined") {
-          localStorage.removeItem("token");
-          window.location.href = "/auth";
-        }
-      }
-      const error = await response.json().catch(() => ({}));
-      throw new Error(error.message || "An error occurred");
-    }
-
-    return response.json() as Promise<T>;
-  }
-
-  async post<T, U = unknown>(
-    url: string,
-    data: U,
-    includeAuth = true
-  ): Promise<T> {
+  async post<T, U = unknown>(url: string, data: U): Promise<T> {
     const response = await fetch(url, {
       method: "POST",
-      headers: this.getHeaders(includeAuth),
+      headers: this.getHeaders(),
       body: JSON.stringify(data),
     });
 
     if (!response.ok) {
       if (response.status === 401) {
-        // Handle unauthorized (expired token, etc.)
         if (typeof window !== "undefined") {
           localStorage.removeItem("token");
           window.location.href = "/auth";
         }
       }
-      const error = await response.json().catch(() => ({}));
-      throw new Error(error.message || "An error occurred");
+
+      const errorData = await response.json().catch(() => ({}));
+
+      // Create error that preserves response structure
+      const error = new Error("HTTP Error");
+      (error as any).response = {
+        status: response.status,
+        statusText: response.statusText,
+        data: errorData,
+      };
+      throw error;
     }
 
     return response.json() as Promise<T>;
@@ -150,14 +143,21 @@ class ApiClient {
 
     if (!response.ok) {
       if (response.status === 401) {
-        // Handle unauthorized (expired token, etc.)
         if (typeof window !== "undefined") {
           localStorage.removeItem("token");
           window.location.href = "/auth";
         }
       }
-      const error = await response.json().catch(() => ({}));
-      throw new Error(error.message || "An error occurred");
+
+      const errorData = await response.json().catch(() => ({}));
+
+      const error = new Error("HTTP Error");
+      (error as any).response = {
+        status: response.status,
+        statusText: response.statusText,
+        data: errorData,
+      };
+      throw error;
     }
 
     return response.json() as Promise<T>;
@@ -171,32 +171,60 @@ class ApiClient {
 
     if (!response.ok) {
       if (response.status === 401) {
-        // Handle unauthorized (expired token, etc.)
         if (typeof window !== "undefined") {
           localStorage.removeItem("token");
           window.location.href = "/auth";
         }
       }
-      const error = await response.json().catch(() => ({}));
-      throw new Error(error.message || "An error occurred");
+
+      const errorData = await response.json().catch(() => ({}));
+
+      const error = new Error("HTTP Error");
+      (error as any).response = {
+        status: response.status,
+        statusText: response.statusText,
+        data: errorData,
+      };
+      throw error;
+    }
+
+    return response.json() as Promise<T>;
+  }
+
+  async get<T>(url: string, includeAuth = true): Promise<T> {
+    const response = await fetch(url, {
+      method: "GET",
+      headers: this.getHeaders(includeAuth),
+    });
+
+    if (!response.ok) {
+      if (response.status === 401) {
+        if (typeof window !== "undefined") {
+          localStorage.removeItem("token");
+          window.location.href = "/auth";
+        }
+      }
+
+      const errorData = await response.json().catch(() => ({}));
+
+      const error = new Error("HTTP Error");
+      (error as any).response = {
+        status: response.status,
+        statusText: response.statusText,
+        data: errorData,
+      };
+      throw error;
     }
 
     return response.json() as Promise<T>;
   }
 
   // Authentication methods
-  async login(email: string, password: string): Promise<any> {
-    return this.post("/api/auth_check", { email, password }, false);
-  }
 
   // Add this method to your ApiClient class
   async registerWithFormData(formData: FormData): Promise<any> {
     const response = await fetch("/api/register", {
       method: "POST",
-      // Do NOT set Content-Type header when using FormData
-      headers: {
-        // Only include auth if needed
-      },
       body: formData,
     });
 
@@ -207,12 +235,17 @@ class ApiClient {
           window.location.href = "/auth";
         }
       }
+
       const error = await response.json().catch(() => ({}));
-      throw new Error(error.message || "An error occurred");
+      throw {
+        message: error.message || error.error || "An error occurred",
+        status: response.status,
+      };
     }
 
     return response.json();
   }
+
   async getMe(): Promise<any> {
     return this.get("/api/me");
   }
@@ -241,10 +274,23 @@ class ApiClient {
     // Get the raw data from the API
     const rawData = await this.get<any>(`/api/service/${serviceId}`);
 
+    // Transform the images array if it exists
+    const transformedImages: ServiceImage[] = [];
+    if (rawData.images && Array.isArray(rawData.images)) {
+      rawData.images.forEach((img: any, index: number) => {
+        transformedImages.push({
+          id: img.id || index,
+          url: img.url || img.filename || "",
+          isPrimary: img.isPrimary || false,
+          sortOrder: img.sortOrder || index,
+          filename: img.filename || undefined,
+        });
+      });
+    }
+
     // Transform the data to match the expected ServiceDetail interface
-    // This handles cases where the API response doesn't perfectly match your expected interface
     const serviceDetail: ServiceDetail = {
-      id: Number(rawData.id), // Convert string ID to number if needed
+      id: Number(rawData.id),
       title: rawData.title || "",
       description: rawData.description || "",
       price: typeof rawData.price === "number" ? rawData.price : 0,
@@ -252,13 +298,15 @@ class ApiClient {
       status: rawData.status || "active",
       createdAt: rawData.createdAt || new Date().toISOString(),
 
-      // Ensure category has the right structure
+      // IMPORTANT: Include the images and primaryImageUrl
+      images: transformedImages,
+      primaryImageUrl: rawData.primaryImageUrl || "",
+
       category: {
         id: rawData.category?.id ? Number(rawData.category.id) : 0,
         name: rawData.category?.name || "",
       },
 
-      // Ensure vendor has the right structure
       vendor: {
         id: rawData.vendor?.id ? Number(rawData.vendor.id) : 0,
         email: rawData.vendor?.email || "",
@@ -271,7 +319,6 @@ class ApiClient {
             : 0,
       },
 
-      // Optional transaction data
       transaction: rawData.transaction
         ? {
             id: Number(rawData.transaction.id),
