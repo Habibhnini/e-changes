@@ -1,4 +1,5 @@
 import Image from "next/image";
+import Link from "next/link";
 
 export default function Home() {
   return (
@@ -59,18 +60,27 @@ export default function Home() {
               alt: "Transportation service",
             },
           ].map((service, index) => (
-            <div key={index} className="flex flex-col items-center">
-              <div className="w-full aspect-square rounded-2xl overflow-hidden mb-4 shadow-md">
-                <img
-                  src={service.image}
-                  alt={service.alt}
-                  className="w-full h-full object-cover"
-                />
+            <Link
+              key={index}
+              href={{
+                pathname: "/explorer",
+                query: { category: encodeURIComponent(service.name) },
+              }}
+              passHref
+            >
+              <div className="flex flex-col items-center cursor-pointer">
+                <div className="w-full aspect-square rounded-2xl overflow-hidden mb-4 shadow-md">
+                  <img
+                    src={service.image}
+                    alt={service.alt}
+                    className="w-full h-full object-cover"
+                  />
+                </div>
+                <h3 className="text-center font-semibold text-gray-800 text-lg">
+                  {service.name}
+                </h3>
               </div>
-              <h3 className="text-center font-semibold text-gray-800 text-lg">
-                {service.name}
-              </h3>
-            </div>
+            </Link>
           ))}
         </div>
 
