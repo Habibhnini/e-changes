@@ -270,6 +270,7 @@ export default function TransactionsPage() {
       setTransactions(data as Transaction[]);
       setFilteredTransactions(data as Transaction[]);
       setError(null);
+      console.log("Transactions loaded successfully", data);
     } catch (error: any) {
       const errorMessage =
         error?.response?.data?.message ||
@@ -645,6 +646,7 @@ export default function TransactionsPage() {
                           {/* LIVRER */}
                           {transaction.role === "seller" &&
                             transaction.status === "completed" &&
+                            transaction.type === "bien" &&
                             transaction.buyerValidated &&
                             transaction.sellerValidated && (
                               <button
