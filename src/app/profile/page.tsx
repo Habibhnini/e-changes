@@ -14,6 +14,7 @@ type Service = OriginalService & {
 import { loadStripe } from "@stripe/stripe-js";
 import StripeSubscribeButton from "../components/StripeSubscibeButton";
 import { useSubscriptionStatus } from "../hooks/useSubscription";
+import SubscriptionRequired from "../components/SubscriptionRequired";
 
 export default function ProfilePage() {
   const [activeTab, setActiveTab] = useState("donnees");
@@ -515,9 +516,7 @@ export default function ProfilePage() {
             </div>
           </div>
         ) : (
-          <div className="text-center mt-10 text-red-500">
-            Accès réservé aux abonnés actifs
-          </div>
+          <SubscriptionRequired />
         ))}
       {/* Modal */}
       {showModal && modalType && user && (

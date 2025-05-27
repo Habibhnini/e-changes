@@ -3,6 +3,7 @@
 import { Suspense } from "react";
 import ChatClient from "./ChatClient";
 import { useSubscriptionStatus } from "../hooks/useSubscription";
+import SubscriptionRequired from "../components/SubscriptionRequired";
 
 export default function ChatPage() {
   const { isActive, loading } = useSubscriptionStatus();
@@ -12,11 +13,7 @@ export default function ChatPage() {
   }
 
   if (!isActive) {
-    return (
-      <div className="text-center mt-10 text-red-500">
-        Accès réservé aux abonnés actifs
-      </div>
-    );
+    return <SubscriptionRequired />;
   }
 
   return (
