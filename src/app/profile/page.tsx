@@ -5,7 +5,12 @@ import Image from "next/image";
 import { IoLocationOutline } from "react-icons/io5";
 import { useAuth } from "../contexts/AuthContext";
 import ServiceModal from "../components/ServiceModal";
-import { Service } from "../api/services/routes";
+import { Service as OriginalService } from "../api/services/routes";
+
+// Extend Service type to include primaryImageUrl for UI mapping
+type Service = OriginalService & {
+  primaryImageUrl?: string;
+};
 import { loadStripe } from "@stripe/stripe-js";
 import StripeSubscribeButton from "../components/StripeSubscibeButton";
 import { useSubscriptionStatus } from "../hooks/useSubscription";
