@@ -39,6 +39,14 @@ interface RegistrationData {
   idCardFront?: File;
   idCardBack?: File;
 }
+interface Notification {
+  id: number;
+  title: string;
+  content: string;
+  link: string;
+  createdAt: string;
+  isRead: boolean;
+}
 
 interface AuthContextType {
   user: User | null;
@@ -59,10 +67,11 @@ interface AuthContextType {
   ) => Promise<void>;
   completeSubscription: (billingDetails: BillingDetails) => Promise<void>;
   updateUserEnergyBalance: (balance: number) => void;
-  notifications: any;
+  notifications: Notification[];
   unreadCount: number;
   setUnreadCount?: (value: number) => void;
   refreshUserProfile: () => Promise<void>;
+  setNotifications: React.Dispatch<React.SetStateAction<Notification[]>>;
 }
 
 interface BillingDetails {
@@ -148,6 +157,27 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       return null;
     }
   };
+  useEffect(() => {
+    const fetchUnreadNotifications = async () => {
+      try {
+        const res = await fetch("/api/notifications/unread", {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        const data = await res.json();
+        if (data.notifications) {
+          setNotifications(data.notifications);
+          setUnreadCount(data.notifications.length);
+        }
+      } catch (err) {
+        console.error("Failed to fetch unread notifications", err);
+      }
+    };
+
+    if (user?.id && token) {
+      fetchUnreadNotifications();
+    }
+  }, [user?.id, token]);
+
   useEffect(() => {
     if (!user?.id || !token) return;
 
@@ -479,6 +509,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         unreadCount,
         setUnreadCount,
         refreshUserProfile,
+        setNotifications,
       }}
     >
       {children}

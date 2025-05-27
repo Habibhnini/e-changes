@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from "react";
 import Image from "next/image";
+import ConfirmCompleteModal from "../components/ConfirmCompleteModal";
 
 // ─── AUTH HELPERS ──────────────────────────────────────────────────────────────
 const getAuthToken = (): string | null => localStorage.getItem("token");
@@ -41,7 +42,7 @@ const TransactionDetails: React.FC<TransactionDetailsProps> = ({
   const [success, setSuccess] = useState<boolean>(false);
   const isSeller = currentUser?.id === service.vendor.id;
   const isFinalized = transaction.status === "completed";
-
+  const [isCompleteModalOpen, setIsCompleteModalOpen] = useState(false);
   const statusColorMap: Record<string, string> = {
     created: "bg-gray-200 text-gray-800",
     negotiation: "bg-yellow-100 text-yellow-700",
@@ -59,6 +60,25 @@ const TransactionDetails: React.FC<TransactionDetailsProps> = ({
   const hasValidated =
     (isSeller && transaction.sellerValidated) ||
     (!isSeller && transaction.buyerValidated);
+  const handleCompleteTransaction = async () => {
+    try {
+      const res = await fetch(`/api/transactions/${transactionId}/complete`, {
+        method: "POST",
+        headers: getAuthHeaders(),
+      });
+
+      if (!res.ok) throw new Error("Erreur lors de la complétion");
+
+      const data = await res.json();
+      onUpdateTransaction({
+        ...transaction,
+        status: data.status,
+      });
+      setIsCompleteModalOpen(false);
+    } catch (err) {
+      setError("Impossible de finaliser la transaction");
+    }
+  };
 
   useEffect(() => {
     if (transaction?.energyAmount != null) {
@@ -262,6 +282,7 @@ const TransactionDetails: React.FC<TransactionDetailsProps> = ({
       </div>
 
       {/* Actions */}
+      {/* Actions */}
       <div className="mt-6 border-t pt-4 border-gray-300">
         <div
           className={`flex ${isNarrowDesktop ? "flex-col" : "flex-row"} gap-2 ${
@@ -291,21 +312,42 @@ const TransactionDetails: React.FC<TransactionDetailsProps> = ({
             Annuler
           </button>
 
-          {!hasValidated && transaction.status !== "validation" && (
-            <button
-              disabled={isFinalized}
-              onClick={handleValidate}
-              className={`px-4 py-2 text-sm rounded-lg ${
-                isFinalized
-                  ? "bg-gray-300 text-gray-400 cursor-not-allowed"
-                  : "bg-[#38AC8E] text-white hover:bg-teal-600 cursor-pointer"
-              }`}
-            >
-              Valider
-            </button>
-          )}
+          {/* VALIDER BUTTON */}
+          {!hasValidated &&
+            ["created", "negotiation", "success"].includes(
+              transaction.status
+            ) && (
+              <button
+                disabled={isFinalized}
+                onClick={handleValidate}
+                className={`px-4 py-2 text-sm rounded-lg ${
+                  isFinalized
+                    ? "bg-gray-300 text-gray-400 cursor-not-allowed"
+                    : "bg-[#38AC8E] text-white hover:bg-teal-600 cursor-pointer"
+                }`}
+              >
+                Valider
+              </button>
+            )}
+
+          {/* COMPLETER (PAYER) BUTTON */}
+
+          {transaction.status === "validation" &&
+            currentUser?.id === transaction.buyer?.id && (
+              <button
+                onClick={() => setIsCompleteModalOpen(true)}
+                className="px-4 py-2 text-sm rounded-lg bg-indigo-600 text-white hover:bg-indigo-700"
+              >
+                Payer la transaction
+              </button>
+            )}
         </div>
       </div>
+      <ConfirmCompleteModal
+        isOpen={isCompleteModalOpen}
+        onClose={() => setIsCompleteModalOpen(false)}
+        onConfirm={handleCompleteTransaction}
+      />
     </div>
   );
 };

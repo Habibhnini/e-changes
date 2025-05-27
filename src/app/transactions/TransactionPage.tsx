@@ -644,7 +644,7 @@ export default function TransactionsPage() {
 
                           {/* LIVRER */}
                           {transaction.role === "seller" &&
-                            transaction.status === "validation" &&
+                            transaction.status === "completed" &&
                             transaction.buyerValidated &&
                             transaction.sellerValidated && (
                               <button
@@ -678,9 +678,7 @@ export default function TransactionsPage() {
 
                           {/* COMPLETER */}
                           {transaction.role === "buyer" &&
-                            ["validation", "delivery"].includes(
-                              transaction.status
-                            ) && (
+                            ["validation"].includes(transaction.status) && (
                               <button
                                 onClick={() => openModal(transaction.id)}
                                 title="Finaliser la transaction"
@@ -697,7 +695,7 @@ export default function TransactionsPage() {
                                     clipRule="evenodd"
                                   />
                                 </svg>
-                                Compléter
+                                Payer la transaction
                               </button>
                             )}
 

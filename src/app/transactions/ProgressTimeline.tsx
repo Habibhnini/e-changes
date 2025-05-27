@@ -5,14 +5,24 @@ interface ProgressTimelineProps {
   hasDelivery?: boolean; // ← Add this prop
 }
 
-const getSteps = (hasDelivery: boolean) => [
-  { key: "created", label: "Créé" },
-  { key: "negotiation", label: "Négociation" },
-  { key: "success", label: "Accepté" },
-  { key: "validation", label: "Validé" },
-  ...(hasDelivery ? [{ key: "delivery", label: "Livré" }] : []),
-  { key: "completed", label: "Terminé" },
-];
+const getSteps = (hasDelivery: boolean) => {
+  const baseSteps = [
+    { key: "created", label: "Créé" },
+    { key: "negotiation", label: "Négociation" },
+    { key: "success", label: "Accepté" },
+    { key: "validation", label: "Validé" },
+  ];
+
+  if (hasDelivery) {
+    return [
+      ...baseSteps,
+      { key: "completed", label: "Payé" },
+      { key: "delivery", label: "Livré" },
+    ];
+  } else {
+    return [...baseSteps, { key: "completed", label: "Payé" }];
+  }
+};
 
 const ProgressTimeline: React.FC<ProgressTimelineProps> = ({
   currentStatus,
