@@ -30,15 +30,22 @@ export default function VendorProfilePage() {
   useEffect(() => {
     const fetchVendorData = async () => {
       try {
+        const token = localStorage.getItem("token"); // Or however you store your JWT
+        const headers = {
+          "Content-Type": "application/json",
+          Authorization: token ? `Bearer ${token}` : "",
+        };
+
         const [userRes, serviceRes] = await Promise.all([
-          fetch(`/api/user/${id}`),
-          fetch(`/api/service?vendorId=${id}`),
+          fetch(`/api/user/${id}`, { headers }),
+          fetch(`/api/service?vendorId=${id}`, { headers }),
         ]);
 
         const userData = await userRes.json();
         const serviceData = await serviceRes.json();
 
         setVendor(userData);
+        console.log("Vendor Data:", userData);
         setServices(serviceData.services || []);
       } catch (err) {
         // console.error("Erreur lors du chargement du profil vendeur:", err);

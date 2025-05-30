@@ -15,6 +15,7 @@ import { loadStripe } from "@stripe/stripe-js";
 import StripeSubscribeButton from "../components/StripeSubscibeButton";
 import { useSubscriptionStatus } from "../hooks/useSubscription";
 import SubscriptionRequired from "../components/SubscriptionRequired";
+import { useRouter } from "next/navigation";
 
 export default function ProfilePage() {
   const [activeTab, setActiveTab] = useState("donnees");
@@ -42,6 +43,13 @@ export default function ProfilePage() {
     message: "",
     type: "",
   });
+  const router = useRouter();
+  useEffect(() => {
+    const token = localStorage.getItem("token");
+    if (!token) {
+      router.push("/auth");
+    }
+  }, []);
   const getFullImageUrl = (url: string): string => {
     if (!url) return "/logo.jpg";
     if (url.startsWith("http")) return url;
@@ -770,14 +778,46 @@ export default function ProfilePage() {
                       ref={imageInputRef}
                       className="hidden"
                       accept="image/*"
-                      onChange={(e) => {
+                      onChange={async (e) => {
                         const file = e.target.files?.[0];
-                        if (file) {
-                          const reader = new FileReader();
-                          reader.onloadend = () => {
-                            setImagePreview(reader.result as string);
-                          };
-                          reader.readAsDataURL(file);
+                        if (!file) return;
+
+                        let finalFile = file;
+
+                        if (
+                          file.type === "image/heic" ||
+                          file.type === "image/heif" ||
+                          file.name.toLowerCase().endsWith(".heic")
+                        ) {
+                          try {
+                            const heic2any = (await import("heic2any")).default;
+                            const convertedBlob = await heic2any({
+                              blob: file,
+                              toType: "image/jpeg",
+                              quality: 0.8,
+                            });
+
+                            finalFile = new File(
+                              [convertedBlob as BlobPart],
+                              file.name.replace(/\.heic$/, ".jpg"),
+                              { type: "image/jpeg" }
+                            );
+                          } catch (err) {
+                            console.error("Erreur de conversion HEIC :", err);
+                            showNotification(
+                              "Le format .heic n'est pas supporté sur ce navigateur.",
+                              "error"
+                            );
+                            return;
+                          }
+                        }
+
+                        setImagePreview(URL.createObjectURL(finalFile));
+
+                        const dataTransfer = new DataTransfer();
+                        dataTransfer.items.add(finalFile);
+                        if (imageInputRef.current) {
+                          imageInputRef.current.files = dataTransfer.files;
                         }
                       }}
                     />

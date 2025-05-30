@@ -1,6 +1,6 @@
 "use client";
 
-import React from "react";
+import React, { useState } from "react";
 
 interface ConfirmCompleteModalProps {
   isOpen: boolean;
@@ -14,7 +14,7 @@ const ConfirmCompleteModal: React.FC<ConfirmCompleteModalProps> = ({
   onConfirm,
 }) => {
   if (!isOpen) return null;
-
+  const [isCompleting, setIsCompleting] = useState(false);
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center backdrop-blur-md bg-black/10 px-4">
       <div className="bg-white rounded-2xl shadow-xl max-w-md w-full p-6">
@@ -34,10 +34,20 @@ const ConfirmCompleteModal: React.FC<ConfirmCompleteModalProps> = ({
             Annuler
           </button>
           <button
-            onClick={onConfirm}
-            className="px-4 py-2 rounded-md bg-green-600 text-white hover:bg-green-700 text-sm"
+            onClick={async () => {
+              if (isCompleting) return; // Prevent double submission
+              setIsCompleting(true);
+              await onConfirm(); // Make sure `onConfirm` is async
+              setIsCompleting(false);
+            }}
+            disabled={isCompleting}
+            className={`px-4 py-2 rounded-md text-white text-sm ${
+              isCompleting
+                ? "bg-gray-400 cursor-not-allowed"
+                : "bg-green-600 hover:bg-green-700"
+            }`}
           >
-            Compléter
+            {isCompleting ? "Traitement en cours..." : "Compléter"}
           </button>
         </div>
       </div>

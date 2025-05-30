@@ -1,13 +1,20 @@
 "use client";
 
-import { Suspense } from "react";
+import { Suspense, useEffect } from "react";
 import TransactionPage from "./TransactionPage";
 import { useSubscriptionStatus } from "../hooks/useSubscription";
 import SubscriptionRequired from "../components/SubscriptionRequired";
-
+import { useRouter } from "next/navigation";
 export default function Page() {
   const { isActive, loading } = useSubscriptionStatus();
+  const router = useRouter();
 
+  useEffect(() => {
+    const token = localStorage.getItem("token");
+    if (!token) {
+      router.push("/auth");
+    }
+  }, []);
   if (loading) {
     return (
       <div className="flex justify-center items-center h-screen">

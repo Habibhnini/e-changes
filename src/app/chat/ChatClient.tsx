@@ -269,6 +269,8 @@ export default function ChatPage() {
         }
       } catch (err) {
         setError("Could not load conversation list");
+      } finally {
+        setLoading(false); // ✅ Ensure loading is always disabled
       }
     };
 
@@ -322,12 +324,6 @@ export default function ChatPage() {
         setOtherUser(data.otherUser);
         setLoading(false);
 
-        // MODIFIED: Only automatically switch to chat on first load
-        if (isMobile && mobileView === "list" && !initialNavDone) {
-          setMobileView("chat");
-          setInitialNavDone(true);
-        }
-
         // Scroll to bottom after messages load
         setTimeout(scrollToBottom, 100);
 
@@ -351,11 +347,12 @@ export default function ChatPage() {
 
   // 3. Make sure initial view is correctly set
   useEffect(() => {
-    // On initial load with no transaction, default to list view on mobile
-    if (isMobile && !selectedTransactionId) {
-      setMobileView("list");
+    if (isMobile) {
+      if (!selectedTransactionId) {
+        setMobileView("list");
+      }
     }
-  }, []);
+  }, [isMobile, selectedTransactionId]);
 
   // Your existing navigation handlers will work fine with this approach
 

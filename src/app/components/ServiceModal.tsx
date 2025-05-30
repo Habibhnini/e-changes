@@ -1,5 +1,6 @@
 "use client";
 import React, { useState, useEffect, useRef } from "react";
+
 import {
   IoClose,
   IoCloudUpload,
@@ -51,6 +52,7 @@ const ServiceModal: React.FC<ServiceModalProps> = ({
     []
   );
   const [images, setImages] = useState<ImagePreview[]>([]);
+  const [originalImages, setOriginalImages] = useState<ImagePreview[]>([]);
   const [primaryImageId, setPrimaryImageId] = useState<string>("");
   const [error, setError] = useState<string>("");
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -58,7 +60,6 @@ const ServiceModal: React.FC<ServiceModalProps> = ({
   const [showPublishConfirm, setShowPublishConfirm] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // Initialize form data when editing or viewing
   useEffect(() => {
     if ((currentMode === "view" || currentMode === "edit") && serviceData) {
       setTitle(serviceData.title || "");
@@ -78,6 +79,7 @@ const ServiceModal: React.FC<ServiceModalProps> = ({
           })
         );
         setImages(existingImages);
+        setOriginalImages(existingImages); // Track original images for edit mode
 
         // Set primary image
         const primaryImg = existingImages.find((img) =>
@@ -88,6 +90,8 @@ const ServiceModal: React.FC<ServiceModalProps> = ({
         if (primaryImg) {
           setPrimaryImageId(primaryImg.id);
         }
+      } else {
+        setOriginalImages([]); // Reset if no images
       }
     }
   }, [currentMode, serviceData]);
@@ -142,9 +146,9 @@ const ServiceModal: React.FC<ServiceModalProps> = ({
       return;
     }
 
-    const oversizedFiles = files.filter((file) => file.size > 5 * 1024 * 1024);
+    const oversizedFiles = files.filter((file) => file.size > 10 * 1024 * 1024);
     if (oversizedFiles.length > 0) {
-      setError("Chaque image doit faire moins de 5MB");
+      setError("Chaque image doit faire moins de 10MB");
       return;
     }
 
@@ -281,27 +285,62 @@ const ServiceModal: React.FC<ServiceModalProps> = ({
       const newImages = images.filter((img) => !img.isExisting);
       const existingImages = images.filter((img) => img.isExisting);
 
+      // Determine if primary image is a new upload or existing
+      const primaryIsNewImage = newImages.some(
+        (img) => img.id === primaryImageId
+      );
+      const primaryIsExistingImage = existingImages.some(
+        (img) => img.id === primaryImageId
+      );
+
       // Add new images
       newImages.forEach((img) => {
         if (img.file) {
           formData.append("images[]", img.file);
-          if (img.id === primaryImageId) {
+          if (String(img.id) === String(primaryImageId)) {
             formData.append("primaryImageIndex", imageIndex.toString());
           }
           imageIndex++;
         }
       });
-
-      // For updates, also send existing image info
-      if (currentMode === "edit" && serviceData?.id) {
-        existingImages.forEach((img, idx) => {
-          formData.append(`existingImages[${idx}][id]`, img.id);
-          formData.append(
-            `existingImages[${idx}][isPrimary]`,
-            (img.id === primaryImageId).toString()
-          );
-        });
+      if (
+        primaryIsNewImage &&
+        !Array.from(formData.keys()).includes("primaryImageIndex")
+      ) {
+        console.warn("⚠️ primaryImageIndex was not set correctly.");
       }
+
+      // For updates, send existing image info and deleted image IDs
+      if (currentMode === "edit" && serviceData?.id) {
+        // Send existing images as JSON string
+        const existingImagePayload = existingImages.map((img) => ({
+          id: img.id,
+          isPrimary: !primaryIsNewImage && img.id === primaryImageId,
+        }));
+        formData.append("existingImages", JSON.stringify(existingImagePayload));
+
+        // Include deleted image IDs
+        const deletedImages = originalImages.filter(
+          (originalImg) => !images.some((img) => img.id === originalImg.id)
+        );
+
+        deletedImages.forEach((img) => {
+          formData.append("deletedImageIds[]", img.id);
+        });
+
+        // Add method override
+        formData.append("_method", "PUT");
+      }
+
+      // Add a flag to indicate which type of image is primary
+      if (primaryIsNewImage) {
+        formData.append("primaryImageType", "new");
+      } else if (primaryIsExistingImage || primaryImageId) {
+        // If we have a primaryImageId but it's not a new image, it must be existing
+        formData.append("primaryImageType", "existing");
+      }
+
+      // Debug logging
 
       const url =
         currentMode === "edit" && serviceData?.id
@@ -309,11 +348,6 @@ const ServiceModal: React.FC<ServiceModalProps> = ({
           : "/api/service";
 
       const method = "POST";
-
-      // Add method override for updates
-      if (currentMode === "edit") {
-        formData.append("_method", "PUT");
-      }
 
       const res = await fetch(url, {
         method,
@@ -328,12 +362,12 @@ const ServiceModal: React.FC<ServiceModalProps> = ({
         return;
       }
 
-      // Success
       if (currentMode === "edit") {
         onUpdated?.();
       } else {
         onCreated?.();
       }
+
       onClose();
     } catch (err) {
       console.error(err);
@@ -341,7 +375,6 @@ const ServiceModal: React.FC<ServiceModalProps> = ({
       setIsSubmitting(false);
     }
   };
-
   const getModalTitle = () => {
     const serviceType = type === "service" ? "service" : "bien";
     switch (currentMode) {
@@ -472,7 +505,7 @@ const ServiceModal: React.FC<ServiceModalProps> = ({
 
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Prix (en e-changes) *
+                  Montant d’e *
                 </label>
                 {currentMode === "view" ? (
                   <div className="p-2.5 bg-gray-50 rounded-md border">

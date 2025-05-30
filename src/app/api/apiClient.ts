@@ -229,13 +229,6 @@ class ApiClient {
     });
 
     if (!response.ok) {
-      if (response.status === 401) {
-        if (typeof window !== "undefined") {
-          localStorage.removeItem("token");
-          window.location.href = "/auth";
-        }
-      }
-
       const error = await response.json().catch(() => ({}));
       throw {
         message: error.message || error.error || "An error occurred",

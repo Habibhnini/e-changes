@@ -142,7 +142,6 @@ const TransactionDetails: React.FC<TransactionDetailsProps> = ({
     if (transaction?.energyAmount != null) {
       setNewAmount(transaction.energyAmount.toString());
     }
-    console.log(service);
   }, [transaction]);
 
   const handleValidate = async () => {
@@ -430,6 +429,7 @@ const TransactionDetails: React.FC<TransactionDetailsProps> = ({
 
       {/* Actions */}
       <div className="mt-6 border-t pt-4 border-gray-300">
+        {/* First row - Main buttons */}
         <div
           className={`flex ${isNarrowDesktop ? "flex-col" : "flex-row"} gap-2 ${
             isNarrowDesktop ? "" : "justify-center"
@@ -476,8 +476,30 @@ const TransactionDetails: React.FC<TransactionDetailsProps> = ({
               </button>
             )}
 
-          {/* DÉPUBLIER BUTTON - Only for sellers with published services */}
-          {isSeller && service?.id && service.status !== "unpublished" && (
+          {/* COMPLETER (PAYER) BUTTON */}
+          {transaction.status === "validation" &&
+            currentUser?.id === transaction.buyer?.id && (
+              <button
+                onClick={() => {
+                  if (!isCompleteModalOpen) {
+                    setIsCompleteModalOpen(true);
+                  }
+                }}
+                disabled={isCompleteModalOpen}
+                className={`px-4 py-2 text-sm rounded-lg text-white ${
+                  isCompleteModalOpen
+                    ? "bg-gray-400 cursor-not-allowed"
+                    : "bg-indigo-600 hover:bg-indigo-700"
+                }`}
+              >
+                Payer la transaction
+              </button>
+            )}
+        </div>
+
+        {/* Second row - Dépublier button centered below */}
+        {isSeller && service?.id && service.status !== "unpublished" && (
+          <div className="flex justify-center mt-3">
             <button
               onClick={() => setShowDepublishConfirm(true)}
               className="px-4 py-2 text-sm rounded-lg bg-orange-500 text-white hover:bg-orange-600 cursor-pointer flex items-center gap-1"
@@ -492,19 +514,8 @@ const TransactionDetails: React.FC<TransactionDetailsProps> = ({
               </svg>
               {isDepublishing ? "Dépublication..." : "Dépublier"}
             </button>
-          )}
-
-          {/* COMPLETER (PAYER) BUTTON */}
-          {transaction.status === "validation" &&
-            currentUser?.id === transaction.buyer?.id && (
-              <button
-                onClick={() => setIsCompleteModalOpen(true)}
-                className="px-4 py-2 text-sm rounded-lg bg-indigo-600 text-white hover:bg-indigo-700"
-              >
-                Payer la transaction
-              </button>
-            )}
-        </div>
+          </div>
+        )}
       </div>
 
       <ConfirmCompleteModal

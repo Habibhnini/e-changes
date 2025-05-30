@@ -11,6 +11,7 @@ import RegistrationStep4 from "../components/AuthForms/RegistrationStep4";
 import ForgotPasswordForm from "../components/AuthForms/ForgotPasswordForm"; // Add this import
 import apiClient from "../api/apiClient";
 import RegistrationConfirmation from "../components/AuthForms/RegistrationConfirmation";
+
 export default function AuthPage() {
   const [activeTab, setActiveTab] = useState("login");
   const [registrationStep, setRegistrationStep] = useState(1);
@@ -152,12 +153,44 @@ export default function AuthPage() {
     }
   };
 
-  const handleFileUpload = (fileType: string, file: File) => {
+  const handleFileUpload = async (fileType: string, file: File) => {
+    let processedFile = file;
+
+    // Normalize HEIC detection
+    const isHeic =
+      file.type === "image/heic" ||
+      file.type === "image/heif" ||
+      file.name.toLowerCase().endsWith(".heic");
+
+    if (fileType === "photoId" && isHeic) {
+      try {
+        const heic2any = (await import("heic2any")).default;
+        const convertedBlob = await heic2any({
+          blob: file,
+          toType: "image/jpeg",
+          quality: 0.8,
+        });
+
+        const convertedFile = new File(
+          [convertedBlob as BlobPart],
+          file.name.replace(/\.heic$/, ".jpg"),
+          { type: "image/jpeg" }
+        );
+
+        processedFile = convertedFile;
+      } catch (conversionError) {
+        console.error("Erreur de conversion HEIC:", conversionError);
+        setError(
+          "Le format .heic n'est pas supporté sur ce navigateur. Veuillez utiliser JPEG ou PNG."
+        );
+        return;
+      }
+    }
+
     if (fileType === "photoId") {
-      setPhotoId(file);
+      setPhotoId(processedFile);
     }
   };
-
   const handleRegistrationFinish = async (e: React.FormEvent) => {
     e.preventDefault();
 
