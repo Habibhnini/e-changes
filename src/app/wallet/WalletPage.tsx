@@ -179,9 +179,9 @@ export default function WalletPage() {
   return (
     <div className="container mx-auto px-4 py-8">
       <div className="mb-6">
-        <h1 className="text-2xl font-bold text-gray-900">Mon Portefeuil</h1>
+        <h1 className="text-2xl font-bold text-gray-900">Mon Portefeuille</h1>
         <p className="text-gray-600 mt-1">
-          Gérez votre portefeuil et consultez l'historique de vos transactions
+          Gérez votre portefeuille et consultez l'historique de vos transactions
         </p>
       </div>
 
@@ -284,7 +284,7 @@ export default function WalletPage() {
         <div className="bg-white shadow rounded-lg p-6 text-center">
           <p className="text-gray-600">
             {activeFilter === "all"
-              ? "Vous n'avez aucune transaction dans votre portefeuil."
+              ? "Vous n'avez aucune transaction dans votre portefeuille."
               : `Vous n'avez aucune transaction de type "${getCurrentFilterLabel()}".`}
           </p>
         </div>

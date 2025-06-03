@@ -119,15 +119,19 @@ const ServiceCard: React.FC<ServiceCardProps> = ({ service, isMobile }) => {
           <div className="absolute bottom-0 left-0 right-0 p-3">
             <div className="flex justify-between items-center">
               {/* Price in the bottom left corner */}
-              <div className="text-[#fce070] font-medium flex items-center">
-                {service.price}{" "}
-                <Image
-                  src="/coin.png"
-                  alt="Energy coin"
-                  width={40}
-                  height={40}
-                  className="object-cover ml-2 w-5 h-5"
-                />
+              <div className="text-[#fce070] bg-white/20 rounded-full p-1 font-medium flex items-center">
+                <div className="inline-flex items-center justify-center  ml-1">
+                  {service.price}{" "}
+                </div>
+                <div className="inline-flex items-center justify-center  ml-1">
+                  <Image
+                    src="/coin.png"
+                    alt="Energy coin"
+                    width={40}
+                    height={30}
+                    className="object-cover w-6 h-5"
+                  />
+                </div>
               </div>
 
               {/* Location in the bottom right corner */}

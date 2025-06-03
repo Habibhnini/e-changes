@@ -246,7 +246,8 @@ export default function ExplorerPageContent() {
           des e-changeurs
         </h2>
         <p className="text-gray-900">
-          Explorez des centaines de services et d'offres autour de chez vous
+          Explorez des centaines de services et d&#39;offres autour de chez
+          vous, en France et dans le Bénélux.
         </p>
       </div>
       {/* ======= DESKTOP SEARCH SECTION ======= */}

@@ -13,11 +13,17 @@ export default function Home() {
             backgroundPosition: "center 20%", // Shows more of the bottom portion of the image
           }}
         >
+          <div
+            className="absolute inset-0"
+            style={{ backgroundColor: "rgba(0, 0, 0, 0.2)" }}
+          ></div>
           <div className="absolute inset-0 flex items-center justify-center">
             <div className="w-full max-w-6xl text-center px-4">
-              <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold text-white mb-2">
-                L'ENERGIE
-              </h1>
+              <div className="flex items-center justify-center mb-2">
+                <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold text-white ml-2 flex items-center">
+                  L' E-NERGIE
+                </h1>
+              </div>
               <p className="text-xl md:text-2xl text-white">
                 comme monnaie d'échange
               </p>
@@ -165,8 +171,11 @@ export default function Home() {
         </div>
 
         {/* Second Section */}
-        <h2 className="text-xl md:text-2xl lg:text-3xl text-[#38AC8E] mb-6">
-          ... Dans lequel la "monnaie d'échange" est de l'énergie
+        <h2 className="text-xl md:text-2xl lg:text-3xl text-[#38AC8E] mb-6 flex items-center">
+          ... Dans lequel la "monnaie d'échange" est de L'E-NERGIE
+          <span className="ml-2">{"( "}</span>
+          <img src="/coin.png" alt="e-nergie logo" className="w-8 h-8 mx-2" />
+          <span>{")"}</span>
         </h2>
 
         {/* Video Placeholder */}
@@ -182,10 +191,10 @@ export default function Home() {
         </p>
 
         {/* Guide Blocks */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-8 mb-12">
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-8 mb-12">
           {[
             {
-              title: "Cherchez un service",
+              title: "Cherchez un service ou un bien",
               description:
                 "Recherchez parmi tous les services, ce dont vous avez besoin",
               image: "/step1.png",
@@ -197,6 +206,13 @@ export default function Home() {
                 "Accédez à l'interface de messagerie afin d'expliquer et confirmer votre besoin",
               image: "/step2.png",
               alt: "Communicate with exchanger",
+            },
+            {
+              title: "Validez l'e-change",
+              description:
+                "Mettez-vous d'accord sur l'e-change à réaliser, validez chacun de votre côté.",
+              image: "/step2.png",
+              alt: "Validez l'e-change",
             },
             {
               title: "Et voilà !",
@@ -224,12 +240,12 @@ export default function Home() {
           ))}
         </div>
 
-        {/* Search Section */}
         <div className="py-8 md:py-16 px-0">
           <div className="max-w-7xl mx-auto">
             {/* Main Title */}
             <h2 className="text-2xl md:text-3xl lg:text-4xl font-bold text-center text-gray-800 mb-8 md:mb-16 tracking-wide">
-              UN ETAT D'ÊTRE ET UN RÉSEAU HUMAIN ET RÉEL
+              S’AUTORISER UN NOUVEL ETAT D&#39;ÊTRE ET SE RECENTRER SUR NOS
+              VALEURS HUMAINES.
             </h2>
 
             {/* Content Section */}
@@ -245,23 +261,155 @@ export default function Home() {
 
               {/* Right side - Content */}
               <div className="space-y-4 md:space-y-6 order-1 lg:order-2">
-                <h3 className="text-xl md:text-2xl lg:text-3xl font-bold text-[#38AC8E] mb-4 md:mb-6">
-                  DES E-CHANGES BIENVEILLANTS ET PAISIBLES
-                </h3>
+                <div className="space-y-4">
+                  <div>
+                    <h3 className="text-lg font-semibold text-gray-800 mb-2">
+                      Confiance
+                    </h3>
+                    <p className="text-gray-600">
+                      Osez croire en vous ! Ayez confiance dans vos talents –
+                      compétences, savoir-faire, expériences dans tous les
+                      domaines de la vie – personnel, professionnel, sportif,
+                      associatif…
+                    </p>
+                  </div>
 
-                <p className="text-gray-700 text-base md:text-lg leading-relaxed">
-                  Les discussions pour se mettre d'accord sur la nature de
-                  l'echange et la quantité d'enerG se font paisiblement, avec
-                  respect. L'accord entre les deux e-changeurs doit être juste
-                  pour les deux. La quantité d'enerG peut être différente de
-                  celle proposée initialement sur le profil de l'e-changeur si
-                  les deux personnes se mettent d'accord. Par exemple, un
-                  e-changeur propose un service d'1 heure de plomberie estimée à
-                  45 enerG mais réalisée à 30 enerG parce que l'autre e-
-                  changeur lui propose de lui apporter des légumes de son
-                  jardin.
+                  <div>
+                    <h3 className="text-lg font-semibold text-gray-800 mb-2">
+                      Discernement
+                    </h3>
+                    <p className="text-gray-600">
+                      Évaluez la pertinence des services au regard de vos
+                      compétences réelles et de l'état des biens que vous
+                      proposez. S'agissant de la valeur de ce que vous offrez,
+                      faites confiance aussi à l'intelligence de la négociation,
+                      et apprenez à ajuster votre proposition.
+                    </p>
+                  </div>
+
+                  <div>
+                    <h3 className="text-lg font-semibold text-gray-800 mb-2">
+                      Responsabilité
+                    </h3>
+                    <p className="text-gray-600">
+                      Prenez la pleine responsabilité de vos actions, vis-à-vis
+                      de vous et des autres. C'est-à-dire, listez pour vous et,
+                      si besoin avec la personne bénéficiaire, les conséquences
+                      éventuelles de l'utilisation du bien ou de la réalisation
+                      du service.
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+        {/* New Section - E-changes Guidelines */}
+        <div className="py-8 md:py-16 px-4">
+          <div className="max-w-6xl mx-auto">
+            {/* Section Title */}
+            <h2 className="text-2xl md:text-3xl lg:text-4xl font-bold text-center text-gray-800 mb-12 tracking-wide">
+              POUR DES E-CHANGES EN BONNE INTELLIGENCE
+            </h2>
+
+            {/* Guidelines List */}
+            <div className="space-y-6">
+              <div className="flex items-start space-x-4 p-4 border-l-4 border-[#38AC8E] bg-white rounded-r-lg shadow-sm">
+                <span className="text-2xl font-bold text-[#38AC8E] min-w-[2rem]">
+                  1.
+                </span>
+                <p className="text-gray-700 text-lg leading-relaxed">
+                  Des e-changes entre personnes majeures.
                 </p>
               </div>
+
+              <div className="flex items-start space-x-4 p-4 border-l-4 border-[#38AC8E] bg-white rounded-r-lg shadow-sm">
+                <span className="text-2xl font-bold text-[#38AC8E] min-w-[2rem]">
+                  2.
+                </span>
+                <p className="text-gray-700 text-lg leading-relaxed">
+                  Aucun bien ou service prohibé ne peut être e-changé.
+                </p>
+              </div>
+
+              <div className="flex items-start space-x-4 p-4 border-l-4 border-[#38AC8E] bg-white rounded-r-lg shadow-sm">
+                <span className="text-2xl font-bold text-[#38AC8E] min-w-[2rem]">
+                  3.
+                </span>
+                <p className="text-gray-700 text-lg leading-relaxed">
+                  Pour des prêts de biens (moyens de transport, hébergement,
+                  outillage…), il est recommandé de vérifier l'identité du
+                  bénéficiaire.
+                </p>
+              </div>
+
+              <div className="flex items-start space-x-4 p-4 border-l-4 border-[#38AC8E] bg-white rounded-r-lg shadow-sm">
+                <span className="text-2xl font-bold text-[#38AC8E] min-w-[2rem]">
+                  4.
+                </span>
+                <p className="text-gray-700 text-lg leading-relaxed">
+                  Toute violence, insulte ou non-respect des engagements pris
+                  lors des transactions est proscrit et pourra faire l'objet
+                  d'un signalement qui peut conduire à l'exclusion de l'adhérant
+                  temporairement ou définitivement.
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div className="bg-yellow-300 rounded-2xl overflow-hidden">
+          <div className="flex justify-between items-center relative">
+            <div className="p-12 md:pl-36">
+              <ul className="space-y-6">
+                <li className="flex items-start">
+                  <div className="w-3 h-3 bg-gray-800 rounded-full mt-2 mr-4 flex-shrink-0"></div>
+                  <h4 className="text-xl font-bold leading-relaxed">
+                    Participez au lancement de cette aventure en vous inscrivant
+                    dès maintenant et obtenez 99{" "}
+                    <img
+                      src="/coin.png"
+                      alt="e-nergie"
+                      className="inline w-6 h-5 mx-1"
+                    />
+                    (au lieu du 33{" "}
+                    <img
+                      src="/coin.png"
+                      alt="e-nergie"
+                      className="inline w-6 h-5 mx-1"
+                    />
+                    ) - jusqu'au 31 décembre 2025.
+                  </h4>
+                </li>
+
+                <li className="flex items-start">
+                  <div className="w-3 h-3 bg-gray-800 rounded-full mt-2 mr-4 flex-shrink-0"></div>
+                  <h4 className="text-xl font-bold leading-relaxed">
+                    Grâce à votre code de parrainage, obtenez 99{" "}
+                    <img
+                      src="/coin.png"
+                      alt="e-nergie"
+                      className="inline w-6 h-5 mx-1"
+                    />
+                    supplémentaires pour vos 100 parrainages. au lieu du 33{" "}
+                    <img
+                      src="/coin.png"
+                      alt="e-nergie"
+                      className="inline w-6 h-5 mx-1"
+                    />
+                    - jusqu'au 31 décembre 2025.
+                  </h4>
+                </li>
+              </ul>
+            </div>
+
+            <div className="hidden md:flex h-full mr-24">
+              <Image
+                src="/images/referral-illustration.png"
+                alt="Referral illustration"
+                width={480}
+                height={320}
+                className="object-contain"
+              />
             </div>
           </div>
         </div>

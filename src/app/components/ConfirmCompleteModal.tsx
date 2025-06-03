@@ -19,12 +19,12 @@ const ConfirmCompleteModal: React.FC<ConfirmCompleteModalProps> = ({
     <div className="fixed inset-0 z-50 flex items-center justify-center backdrop-blur-md bg-black/10 px-4">
       <div className="bg-white rounded-2xl shadow-xl max-w-md w-full p-6">
         <h2 className="text-lg font-semibold mb-4 text-center">
-          Confirmer la complétion
+          Confirmer l'e-change
         </h2>
         <p className="text-sm text-gray-600 mb-6 text-center">
-          Êtes-vous sûr de vouloir compléter cette transaction ?
+          Êtes-vous sûr d’avoir reçu le bien ou le service attendu ?
           <br />
-          Cela transférera l'énergie au vendeur.
+          Si oui, cela transférera l’énergie à l’offrant.
         </p>
         <div className="flex justify-end space-x-3">
           <button

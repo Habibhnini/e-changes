@@ -553,7 +553,7 @@ export default function TransactionsPage() {
               }`}
               onClick={() => setActiveFilter("buyer")}
             >
-              Acheteur ({buyerCount})
+              bénéficiaire ({buyerCount})
             </button>
             <button
               className={`py-3 px-6 border-b-2 font-medium text-sm ${
@@ -563,7 +563,7 @@ export default function TransactionsPage() {
               }`}
               onClick={() => setActiveFilter("seller")}
             >
-              Vendeur ({sellerCount})
+              Offrant ({sellerCount})
             </button>
           </div>
         </div>

@@ -41,7 +41,17 @@ export default function Success() {
                   Détails de votre abonnement
                 </h3>
                 <div className="mt-2 text-sm text-green-700 space-y-1">
-                  <p>Abonnement Annuel Energies</p>
+                  <p>
+                    Abonnement Annuel E-nergies (
+                    <span className="inline-flex items-center justify-center  p-1 mx-1">
+                      <img
+                        src="/coin.png"
+                        alt="Energy coin"
+                        className="w-4 h-3 object-cover"
+                      />
+                    </span>
+                    )
+                  </p>
                   <p>
                     Accès complet à la plateforme :{" "}
                     <span className="font-semibold">✓ Activé</span>

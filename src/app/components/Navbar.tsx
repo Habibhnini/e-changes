@@ -71,10 +71,10 @@ const Navbar: React.FC<NavbarProps> = ({
                 Explorer
               </Link>
               <Link
-                href="/apropos"
+                href="/about"
                 className="px-2 py-2 text-sm font-medium text-gray-700 hover:text-gray-900"
               >
-                A propos
+                Qui sommes-nous ?
               </Link>
             </div>
           </div>
@@ -175,10 +175,10 @@ const Navbar: React.FC<NavbarProps> = ({
               Explorer
             </Link>
             <Link
-              href="/apropos"
+              href="/about"
               className="block px-3 py-2 text-base font-medium text-gray-700 hover:text-gray-900 hover:bg-gray-50"
             >
-              A propos
+              Qui sommes-nous ?
             </Link>
             {!isLoggedIn && (
               <Link

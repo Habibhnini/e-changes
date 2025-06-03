@@ -5,6 +5,7 @@ import { useState, useEffect } from "react";
 import { getWalletInfo, useEnergy } from "../api/walletApi";
 import type { Wallet } from "../api/walletApi";
 import TransferModal from "./TransferEnergyModal"; // adjust the path if needed
+import Image from "next/image";
 
 interface WalletWidgetProps {
   onEnergyUsed?: () => void; // Optional callback for when energy is used
@@ -35,7 +36,9 @@ export default function WalletWidget({ onEnergyUsed }: WalletWidgetProps) {
     } catch (err) {
       // console.error(err);
       setError(
-        err instanceof Error ? err.message : "Échec du chargement du portefeuil"
+        err instanceof Error
+          ? err.message
+          : "Échec du chargement du portefeuille"
       );
     } finally {
       setLoading(false);
@@ -69,7 +72,7 @@ export default function WalletWidget({ onEnergyUsed }: WalletWidgetProps) {
       const result = await useEnergy(amount, energyDescription);
 
       setWallet(result.wallet);
-      setSuccessMessage(`${amount} énergie utilisée avec succès`);
+      setSuccessMessage(`${amount} E-nergie utilisée avec succès`);
       closeModal();
 
       // Call the callback if provided
@@ -83,7 +86,7 @@ export default function WalletWidget({ onEnergyUsed }: WalletWidgetProps) {
       }, 3000);
     } catch (err: any) {
       //   console.error(err);
-      setError(err.message || "Échec de l'utilisation de l'énergie");
+      setError(err.message || "Échec de l'utilisation de l'E-nergie");
     } finally {
       setSubmitting(false);
     }
@@ -137,7 +140,7 @@ export default function WalletWidget({ onEnergyUsed }: WalletWidgetProps) {
           </div>
           <div className="ml-3">
             <p className="text-sm text-red-700">
-              Impossible de charger le portefeuil: {error}
+              Impossible de charger le portefeuille: {error}
             </p>
             <button
               onClick={loadData}
@@ -214,15 +217,19 @@ export default function WalletWidget({ onEnergyUsed }: WalletWidgetProps) {
                   >
                     <path d="M2 6a2 2 0 012-2h12a2 2 0 012 2v2a2 2 0 100 4v2a2 2 0 01-2 2H4a2 2 0 01-2-2v-2a2 2 0 100-4V6z" />
                   </svg>
-                  <p className="text-sm text-gray-500">Mon Portefeuil</p>
+                  <p className="text-sm text-gray-500">Mon portefeuille</p>
                 </div>
                 <div className="flex items-baseline">
-                  <h2 className="text-3xl font-bold text-gray-900">
+                  <h2 className="text-3xl font-bold text-gray-900 mr-2">
                     {wallet.balance}
                   </h2>
-                  <span className="ml-2 text-lg text-blue-600 font-medium">
-                    Énergie
-                  </span>
+                  <Image
+                    src="/coin.png"
+                    alt="Energy coin"
+                    width={50}
+                    height={40}
+                    className="object-cover w-8 h-6"
+                  />
                 </div>
                 <p className="text-xs text-gray-500 mt-2">
                   Créé le {formatDate(wallet.createdAt)}

@@ -702,7 +702,7 @@ export default function ProfilePage() {
                   <div className="mt-2">
                     <span>Et gagnez</span>{" "}
                     <span className="font-bold">99 e-€</span>/{" "}
-                    <span>personnes (jusqu'à 1000 personnes)</span>
+                    <span>personnes (jusqu'à 100 personnes)</span>
                   </div>
                 </div>
                 <div className="hidden md:flex h-full mr-24">
