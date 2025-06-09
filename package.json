@@ -9,6 +9,7 @@
     "lint": "next lint"
   },
   "dependencies": {
+    "@elfsight/embed-sdk": "^0.3.3",
     "@stripe/stripe-js": "^7.3.0",
     "date-fns": "^4.1.0",
     "event-source-polyfill": "^1.0.31",

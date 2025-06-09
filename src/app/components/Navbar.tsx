@@ -76,6 +76,12 @@ const Navbar: React.FC<NavbarProps> = ({
               >
                 Qui sommes-nous ?
               </Link>
+              <Link
+                href="/actualite"
+                className="px-2 py-2 text-sm font-medium text-gray-700 hover:text-gray-900"
+              >
+                Actualité
+              </Link>
             </div>
           </div>
 

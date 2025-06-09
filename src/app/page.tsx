@@ -1,7 +1,36 @@
+"use client";
 import Image from "next/image";
 import Link from "next/link";
+import { useEffect, useState } from "react";
 
 export default function Home() {
+  const [heroText, setHeroText] = useState({
+    title: "L' E-NERGIE",
+    subtitle: "comme monnaie d'échange",
+  });
+  type FeatureItem = {
+    text: string;
+    coinValue?: number | string;
+    insteadOfText?: string;
+    insteadOfValue?: number | string;
+    endText?: string;
+  };
+  const [featuresData, setFeaturesData] = useState<{ items: FeatureItem[] }>({
+    items: [],
+  });
+
+  useEffect(() => {
+    fetch("/hero-text.json")
+      .then((response) => response.json())
+      .then((data) => setHeroText(data))
+      .catch((error) => console.error("Error loading hero text:", error));
+  }, []);
+  useEffect(() => {
+    fetch("/features-list.json")
+      .then((response) => response.json())
+      .then((data) => setFeaturesData(data))
+      .catch((error) => console.error("Error loading features data:", error));
+  }, []);
   return (
     <div className="min-h-screen bg-white font-sans">
       {/* Hero Banner */}
@@ -21,11 +50,11 @@ export default function Home() {
             <div className="w-full max-w-6xl text-center px-4">
               <div className="flex items-center justify-center mb-2">
                 <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold text-white ml-2 flex items-center">
-                  L' E-NERGIE
+                  {heroText.title}
                 </h1>
               </div>
               <p className="text-xl md:text-2xl text-white">
-                comme monnaie d'échange
+                {heroText.subtitle}
               </p>
             </div>
           </div>
@@ -99,7 +128,7 @@ export default function Home() {
           {[
             {
               name: "Biens consommables",
-              image: "/achat.png",
+              image: "/biens-consommable.png",
               alt: "Consumable goods",
             },
             {
@@ -121,7 +150,7 @@ export default function Home() {
                   <img
                     src={service.image}
                     alt={service.alt}
-                    className="w-full h-full object-cover"
+                    className="w-96 h-96 object-cover"
                   />
                 </div>
                 <h3 className="text-center font-semibold text-gray-800 text-lg">
@@ -137,7 +166,7 @@ export default function Home() {
           {[
             {
               name: "Biens consommables",
-              image: "/achat.png",
+              image: "/biens-consommable.png",
               alt: "Consumable goods",
             },
             {
@@ -179,7 +208,18 @@ export default function Home() {
         </h2>
 
         {/* Video Placeholder */}
-        <div className="bg-black w-full h-64 md:h-96 mb-12"></div>
+        <video
+          className="w-full h-64 md:h-96 mb-12 object-cover rounded-2xl shadow-lg"
+          controls
+          controlsList="nodownload"
+          muted
+          loop
+          playsInline
+          poster="/video-thumbnail.jpg"
+        >
+          <source src="/video.mp4" type="video/mp4" />
+          Your browser does not support the video tag.
+        </video>
 
         {/* How It Works Section */}
         <h2 className="text-xl md:text-2xl lg:text-3xl font-semibold text-black mb-6">
@@ -211,7 +251,7 @@ export default function Home() {
               title: "Validez l'e-change",
               description:
                 "Mettez-vous d'accord sur l'e-change à réaliser, validez chacun de votre côté.",
-              image: "/step2.png",
+              image: "/check.png",
               alt: "Validez l'e-change",
             },
             {
@@ -361,44 +401,26 @@ export default function Home() {
           <div className="flex justify-between items-center relative">
             <div className="p-12 md:pl-36">
               <ul className="space-y-6">
-                <li className="flex items-start">
-                  <div className="w-3 h-3 bg-gray-800 rounded-full mt-2 mr-4 flex-shrink-0"></div>
-                  <h4 className="text-xl font-bold leading-relaxed">
-                    Participez au lancement de cette aventure en vous inscrivant
-                    dès maintenant et obtenez 99{" "}
-                    <img
-                      src="/coin.png"
-                      alt="e-nergie"
-                      className="inline w-6 h-5 mx-1"
-                    />
-                    (au lieu du 33{" "}
-                    <img
-                      src="/coin.png"
-                      alt="e-nergie"
-                      className="inline w-6 h-5 mx-1"
-                    />
-                    ) - jusqu'au 31 décembre 2025.
-                  </h4>
-                </li>
-
-                <li className="flex items-start">
-                  <div className="w-3 h-3 bg-gray-800 rounded-full mt-2 mr-4 flex-shrink-0"></div>
-                  <h4 className="text-xl font-bold leading-relaxed">
-                    Grâce à votre code de parrainage, obtenez 99{" "}
-                    <img
-                      src="/coin.png"
-                      alt="e-nergie"
-                      className="inline w-6 h-5 mx-1"
-                    />
-                    supplémentaires pour vos 100 parrainages. au lieu du 33{" "}
-                    <img
-                      src="/coin.png"
-                      alt="e-nergie"
-                      className="inline w-6 h-5 mx-1"
-                    />
-                    - jusqu'au 31 décembre 2025.
-                  </h4>
-                </li>
+                {featuresData.items.map((item, index) => (
+                  <li key={index} className="flex items-start">
+                    <div className="w-3 h-3 bg-gray-800 rounded-full mt-2 mr-4 flex-shrink-0"></div>
+                    <h4 className="text-xl font-bold leading-relaxed">
+                      {item.text} {item.coinValue}{" "}
+                      <img
+                        src="/coin.png"
+                        alt="e-nergie"
+                        className="inline w-6 h-5 mx-1"
+                      />
+                      {item.insteadOfText} {item.insteadOfValue}{" "}
+                      <img
+                        src="/coin.png"
+                        alt="e-nergie"
+                        className="inline w-6 h-5 mx-1"
+                      />
+                      {item.endText}
+                    </h4>
+                  </li>
+                ))}
               </ul>
             </div>
 
