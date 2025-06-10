@@ -505,29 +505,33 @@ const ServiceModal: React.FC<ServiceModalProps> = ({
 
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Montant d’e *
+                  Montant d'energie *
                 </label>
                 {currentMode === "view" ? (
-                  <div className="p-2.5 bg-gray-50 rounded-md border">
-                    {price} e-€
+                  <div className="p-2.5 bg-gray-50 rounded-md border flex items-center">
+                    {price}
+                    <img
+                      src="/coin.png"
+                      alt="e-nergie"
+                      className="inline w-6 h-5 ml-2"
+                    />
                   </div>
                 ) : (
                   <div className="relative">
                     <input
                       type="number"
-                      className="w-full border border-gray-300 rounded-md p-2.5 focus:ring-2 focus:ring-teal-500 focus:border-transparent outline-none transition-all"
+                      className="w-full border border-gray-300 rounded-md p-2.5 pr-12 focus:ring-2 focus:ring-teal-500 focus:border-transparent outline-none transition-all"
                       value={price}
                       onChange={(e) => setPrice(Number(e.target.value))}
                       placeholder="0"
                       min="0"
                     />
                     <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
-                      <span className="text-gray-500">e-€</span>
+                      <img src="/coin.png" alt="e-nergie" className="w-6 h-5" />
                     </div>
                   </div>
                 )}
               </div>
-
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
                   Catégorie *
