@@ -42,7 +42,8 @@ const AboutPage = () => {
               {/* Philosophy blocks */}
               <div className="bg-white/80 backdrop-blur-sm rounded-2xl p-8 shadow-lg border border-white/20">
                 <p className="text-xl text-gray-700 leading-relaxed">
-                  De revenir à des{" "}
+                  E-changes est né pour celles et ceux qui, comme nous,
+                  ressentent cette nécessité de revenir à des{" "}
                   <span className="font-bold text-[#38AC8E]">
                     partages simples mais connectés
                   </span>{" "}

@@ -1,5 +1,5 @@
-// RegistrationStep4.tsx (UPDATED WITH PHOTO UPLOAD)
-import React from "react";
+// RegistrationStep4.tsx (UPDATED WITH IMAGE SIZE VALIDATION)
+import React, { useState } from "react";
 import Image from "next/image";
 
 interface RegistrationStep4Props {
@@ -45,6 +45,36 @@ const RegistrationStep4: React.FC<RegistrationStep4Props> = ({
   photoId,
   handleFileUpload,
 }) => {
+  const [imageError, setImageError] = useState("");
+
+  const formatFileSize = (bytes: number): string => {
+    if (bytes === 0) return "0 Bytes";
+    const k = 1024;
+    const sizes = ["Bytes", "KB", "MB", "GB"];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + " " + sizes[i];
+  };
+
+  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const maxSize = 10 * 1024 * 1024; // 10MB
+    setImageError("");
+
+    if (file.size > maxSize) {
+      setImageError(
+        `Image trop volumineuse. Taille maximum: 10MB. Votre fichier: ${formatFileSize(
+          file.size
+        )}`
+      );
+      e.target.value = "";
+      return;
+    }
+
+    handleFileUpload("photoId", file);
+  };
+
   return (
     <form className="p-6 space-y-4" onSubmit={handleRegistrationFinish}>
       {error && (
@@ -169,13 +199,14 @@ const RegistrationStep4: React.FC<RegistrationStep4Props> = ({
         <label className="block text-sm font-medium text-gray-700">
           VOTRE PHOTO
           {photoId && (
-            <span className="text-green-500 text-xs">(Fichier ajouté)</span>
+            <span className="text-green-500 text-xs ml-1">
+              (Fichier ajouté)
+            </span>
           )}
         </label>
         <div className="mt-1 flex justify-center px-6 pt-3 pb-3 border-2 border-gray-300 border-dashed rounded-md">
           <div className="space-y-1 text-center">
             {!photoId ? (
-              // Show upload icon if no photo uploaded
               <svg
                 className="mx-auto h-10 w-10 text-gray-400"
                 stroke="currentColor"
@@ -191,7 +222,6 @@ const RegistrationStep4: React.FC<RegistrationStep4Props> = ({
                 />
               </svg>
             ) : (
-              // Show image preview instead of icon
               <img
                 src={URL.createObjectURL(photoId)}
                 alt="Aperçu"
@@ -215,16 +245,18 @@ const RegistrationStep4: React.FC<RegistrationStep4Props> = ({
                   type="file"
                   className="sr-only"
                   accept="image/*"
-                  onChange={(e) => {
-                    if (e.target.files && e.target.files[0]) {
-                      handleFileUpload("photoId", e.target.files[0]);
-                    }
-                  }}
+                  onChange={handleFileSelect}
                 />
               </label>
+              <p className="text-xs text-gray-500">Taille maximum: 10MB</p>
             </div>
           </div>
         </div>
+        {imageError && (
+          <div className="mt-2 bg-red-50 border border-red-400 text-red-700 px-3 py-2 rounded text-sm">
+            {imageError}
+          </div>
+        )}
       </div>
 
       <div className="flex items-center justify-between mt-4">

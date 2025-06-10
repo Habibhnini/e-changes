@@ -76,12 +76,12 @@ export default function Home() {
           {[
             {
               name: "Service à la personne",
-              image: "/vaccum.png",
+              image: "/Service a la personne.png",
               alt: "House cleaning service",
             },
             {
               name: "Travaux manuels",
-              image: "/plombier.png",
+              image: "/Bricolage.png",
               alt: "Manual work service",
             },
             {
@@ -203,7 +203,7 @@ export default function Home() {
         <h2 className="text-xl md:text-2xl lg:text-3xl text-[#38AC8E] mb-6 flex items-center">
           ... Dans lequel la "monnaie d'échange" est de L'E-NERGIE
           <span className="ml-2">{"( "}</span>
-          <img src="/coin.png" alt="e-nergie logo" className="w-8 h-8 mx-2" />
+          <img src="/coin.png" alt="e-nergie logo" className="w-10 h-8 mx-2" />
           <span>{")"}</span>
         </h2>
 
@@ -227,7 +227,8 @@ export default function Home() {
         </h2>
         <p className="text-gray-700 mb-8 font-semibold">
           Notre guide étape par étape vous guidera tout au long du processus
-          d'échange de services ou de biens, le rendant simple et sans tracas!
+          d'échange de services ou de biens, le rendant simple et accessible à
+          tout le monde!
         </p>
 
         {/* Guide Blocks */}
@@ -236,7 +237,7 @@ export default function Home() {
             {
               title: "Cherchez un service ou un bien",
               description:
-                "Recherchez parmi tous les services, ce dont vous avez besoin",
+                "Recherchez parmi tous les services et les biens proposés, ce dont vous avez besoin.",
               image: "/step1.png",
               alt: "Search for a service",
             },
@@ -257,7 +258,7 @@ export default function Home() {
             {
               title: "Et voilà !",
               description:
-                "L'e-changeur rend le service ou échange le bien et la somme d'énergie vous est débitée",
+                "L'e-changeur rend le service ou échange le bien. Une fois l’e-change réalisé, le bénéficiaire termine la transaction et cela transfère à l’offrant le montant d’énergie validé.",
               image: "/step3.png",
               alt: "Service completed",
             },

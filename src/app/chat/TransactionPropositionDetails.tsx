@@ -414,7 +414,7 @@ const TransactionDetails: React.FC<TransactionDetailsProps> = ({
             alt="Energy"
             width={20}
             height={20}
-            className="inline-block ml-1 h-4 w-4"
+            className="inline-block ml-1 h-4 w-5"
           />
         </div>
       </div>
@@ -433,7 +433,7 @@ const TransactionDetails: React.FC<TransactionDetailsProps> = ({
               alt="Energy"
               width={20}
               height={20}
-              className="inline-block ml-1 h-4 w-4"
+              className="inline-block ml-1 h-4 w-5"
             />
           </span>
         </div>
@@ -483,7 +483,7 @@ const TransactionDetails: React.FC<TransactionDetailsProps> = ({
                         alt="Energy"
                         width={16}
                         height={16}
-                        className="inline-block ml-1 h-3 w-3"
+                        className="inline-block ml-1 h-3 w-4"
                       />
                     </div>
                     <div className="text-xs text-gray-500">
@@ -559,7 +559,7 @@ const TransactionDetails: React.FC<TransactionDetailsProps> = ({
                       alt="Energy"
                       width={16}
                       height={16}
-                      className="h-4 w-4"
+                      className="h-4 w-5"
                     />
                   </div>
                 </div>

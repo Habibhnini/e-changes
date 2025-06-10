@@ -322,7 +322,7 @@ const TransactionDetails: React.FC<TransactionDetailsProps> = ({
             alt="Energy"
             width={20}
             height={20}
-            className="inline-block ml-1 h-4 w-4"
+            className="inline-block ml-1 h-4 w-5"
           />
         </div>
         <div className="text-sm mt-1">
@@ -333,7 +333,7 @@ const TransactionDetails: React.FC<TransactionDetailsProps> = ({
             alt="Energy"
             width={20}
             height={20}
-            className="inline-block ml-1 h-4 w-4"
+            className="inline-block ml-1 h-4 w-5"
           />
         </div>
       </div>

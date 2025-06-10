@@ -44,12 +44,14 @@ export default function ProfilePage() {
     type: "",
   });
   const router = useRouter();
+
   useEffect(() => {
     const token = localStorage.getItem("token");
     if (!token) {
       router.push("/auth");
     }
   }, []);
+
   const getFullImageUrl = (url: string): string => {
     if (!url) return "/logo.jpg";
     if (url.startsWith("http")) return url;
@@ -73,6 +75,53 @@ export default function ProfilePage() {
     }, 3000);
   };
 
+  // Format file size for display
+  const formatFileSize = (bytes: number): string => {
+    if (bytes === 0) return "0 Bytes";
+    const k = 1024;
+    const sizes = ["Bytes", "KB", "MB", "GB"];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + " " + sizes[i];
+  };
+
+  // Enhanced image validation
+  const validateImageFile = (
+    file: File
+  ): { isValid: boolean; error?: string } => {
+    const maxSize = 10 * 1024 * 1024; // 10MB
+    const validTypes = [
+      "image/jpeg",
+      "image/jpg",
+      "image/png",
+      "image/webp",
+      "image/heic",
+      "image/heif",
+    ];
+
+    if (
+      !validTypes.includes(file.type) &&
+      !file.name.toLowerCase().endsWith(".heic")
+    ) {
+      return {
+        isValid: false,
+        error: `Format de fichier non supporté. Formats autorisés: JPG, PNG, WebP, HEIC. Votre fichier: ${
+          file.type || "inconnu"
+        }`,
+      };
+    }
+
+    if (file.size > maxSize) {
+      return {
+        isValid: false,
+        error: `Image trop volumineuse. Taille maximum: 10MB. Votre fichier: ${formatFileSize(
+          file.size
+        )}`,
+      };
+    }
+
+    return { isValid: true };
+  };
+
   // Add this function for canceling edits
   const handleCancelEdit = () => {
     setIsEditing(false);
@@ -81,22 +130,48 @@ export default function ProfilePage() {
     setImagePreview(null);
   };
 
-  // Replace your form submission with this improved version
+  // Enhanced form submission with better validation
   const handleSubmit = async (e: {
     preventDefault: () => void;
     currentTarget: HTMLFormElement | undefined;
   }) => {
     e.preventDefault();
 
-    if (password && password !== confirmPassword) {
-      showNotification("Les mots de passe ne correspondent pas", "error");
-      return;
+    // Password validation
+    if (password || confirmPassword) {
+      if (!password) {
+        showNotification("Veuillez saisir un nouveau mot de passe", "error");
+        return;
+      }
+
+      if (password.length < 6) {
+        showNotification(
+          "Le mot de passe doit contenir au moins 6 caractères",
+          "error"
+        );
+        return;
+      }
+
+      if (password !== confirmPassword) {
+        showNotification("Les mots de passe ne correspondent pas", "error");
+        return;
+      }
     }
 
     const formData = new FormData(e.currentTarget);
     const fileInput = imageInputRef.current;
+
+    // Enhanced image validation
     if (fileInput?.files?.[0]) {
-      formData.append("photoId", fileInput.files[0]); // ✅ attach image
+      const file = fileInput.files[0];
+      const validation = validateImageFile(file);
+
+      if (!validation.isValid) {
+        showNotification(validation.error!, "error");
+        return;
+      }
+
+      formData.append("photoId", file);
     }
 
     try {
@@ -121,11 +196,13 @@ export default function ProfilePage() {
         setIsEditing(false);
         setPassword("");
         setConfirmPassword("");
+        setImagePreview(null);
       }
     } catch (error) {
-      showNotification("Une erreur est survenue", "error");
+      showNotification("Une erreur réseau est survenue", "error");
     }
   };
+
   useEffect(() => {
     const fetchSubscription = async () => {
       if (!user?.id) return;
@@ -454,7 +531,7 @@ export default function ProfilePage() {
                                           alt="User profile"
                                           width={40}
                                           height={40}
-                                          className="object-cover ml-2 w-5 h-5"
+                                          className="object-cover ml-2 w-6 h-5"
                                         />
                                       </div>
                                       <div className="text-white text-sm flex items-center">
@@ -552,7 +629,7 @@ export default function ProfilePage() {
                                           alt="User profile"
                                           width={40}
                                           height={40}
-                                          className="object-cover ml-2 w-5 h-5"
+                                          className="object-cover ml-2 w-6 h-5"
                                         />
                                       </div>
 
@@ -782,8 +859,20 @@ export default function ProfilePage() {
                         const file = e.target.files?.[0];
                         if (!file) return;
 
+                        // Enhanced validation
+                        const validation = validateImageFile(file);
+                        if (!validation.isValid) {
+                          showNotification(validation.error!, "error");
+                          // Clear the input
+                          if (imageInputRef.current) {
+                            imageInputRef.current.value = "";
+                          }
+                          return;
+                        }
+
                         let finalFile = file;
 
+                        // Handle HEIC conversion
                         if (
                           file.type === "image/heic" ||
                           file.type === "image/heif" ||
@@ -802,14 +891,32 @@ export default function ProfilePage() {
                               file.name.replace(/\.heic$/, ".jpg"),
                               { type: "image/jpeg" }
                             );
+
+                            showNotification(
+                              "Image HEIC convertie avec succès",
+                              "success"
+                            );
                           } catch (err) {
                             console.error("Erreur de conversion HEIC :", err);
                             showNotification(
-                              "Le format .heic n'est pas supporté sur ce navigateur.",
+                              "Erreur lors de la conversion HEIC. Veuillez utiliser un autre format.",
                               "error"
                             );
+                            if (imageInputRef.current) {
+                              imageInputRef.current.value = "";
+                            }
                             return;
                           }
+                        }
+
+                        // Validate the final file size after conversion
+                        const finalValidation = validateImageFile(finalFile);
+                        if (!finalValidation.isValid) {
+                          showNotification(finalValidation.error!, "error");
+                          if (imageInputRef.current) {
+                            imageInputRef.current.value = "";
+                          }
+                          return;
                         }
 
                         setImagePreview(URL.createObjectURL(finalFile));
@@ -824,6 +931,11 @@ export default function ProfilePage() {
                   </>
                 )}
               </div>
+              {isEditing && (
+                <p className="text-xs text-gray-500 mt-2">
+                  Formats supportés: JPG, PNG, WebP, HEIC • Taille maximum: 10MB
+                </p>
+              )}
             </div>
 
             {/* View Mode */}
@@ -871,8 +983,10 @@ export default function ProfilePage() {
                     </label>
                     <input
                       name="email"
+                      type="email"
                       defaultValue={user?.email}
-                      className="w-full border border-gray-300 rounded-lg p-2"
+                      className="w-full border border-gray-300 rounded-lg p-2 focus:ring-2 focus:ring-[#38AC8E] focus:border-transparent"
+                      required
                     />
                   </div>
                   <div>
@@ -882,7 +996,7 @@ export default function ProfilePage() {
                     <input
                       name="city"
                       defaultValue={user?.userInfo?.city}
-                      className="w-full border border-gray-300 rounded-lg p-2"
+                      className="w-full border border-gray-300 rounded-lg p-2 focus:ring-2 focus:ring-[#38AC8E] focus:border-transparent"
                     />
                   </div>
                 </div>
@@ -895,7 +1009,8 @@ export default function ProfilePage() {
                     <input
                       name="firstName"
                       defaultValue={user?.firstName}
-                      className="w-full border border-gray-300 rounded-lg p-2"
+                      className="w-full border border-gray-300 rounded-lg p-2 focus:ring-2 focus:ring-[#38AC8E] focus:border-transparent"
+                      required
                     />
                   </div>
                   <div>
@@ -905,7 +1020,8 @@ export default function ProfilePage() {
                     <input
                       name="lastName"
                       defaultValue={user?.lastName}
-                      className="w-full border border-gray-300 rounded-lg p-2"
+                      className="w-full border border-gray-300 rounded-lg p-2 focus:ring-2 focus:ring-[#38AC8E] focus:border-transparent"
+                      required
                     />
                   </div>
                 </div>
@@ -920,14 +1036,20 @@ export default function ProfilePage() {
                       name="password"
                       value={password}
                       onChange={(e) => setPassword(e.target.value)}
-                      className={`w-full border rounded-lg p-2 transition-colors duration-150 ${
+                      className={`w-full border rounded-lg p-2 transition-colors duration-150 focus:ring-2 focus:ring-[#38AC8E] focus:border-transparent ${
                         password === "" && confirmPassword === ""
                           ? "border-gray-300"
-                          : password === confirmPassword
+                          : password === confirmPassword && password.length >= 6
                           ? "border-green-500"
                           : "border-red-500"
                       }`}
+                      placeholder="Laissez vide pour ne pas changer"
                     />
+                    {password && password.length < 6 && (
+                      <p className="text-xs text-red-600 mt-1">
+                        Le mot de passe doit contenir au moins 6 caractères
+                      </p>
+                    )}
                   </div>
                   <div>
                     <label className="text-gray-600 text-sm mb-1 block">
@@ -937,13 +1059,14 @@ export default function ProfilePage() {
                       type="password"
                       value={confirmPassword}
                       onChange={(e) => setConfirmPassword(e.target.value)}
-                      className={`w-full border rounded-lg p-2 transition-colors duration-150 ${
+                      className={`w-full border rounded-lg p-2 transition-colors duration-150 focus:ring-2 focus:ring-[#38AC8E] focus:border-transparent ${
                         password === "" && confirmPassword === ""
                           ? "border-gray-300"
-                          : password === confirmPassword
+                          : password === confirmPassword && password.length >= 6
                           ? "border-green-500"
                           : "border-red-500"
                       }`}
+                      placeholder="Confirmez le nouveau mot de passe"
                     />
                   </div>
                   {confirmPassword && password !== confirmPassword && (
@@ -951,6 +1074,14 @@ export default function ProfilePage() {
                       Les mots de passe ne correspondent pas
                     </p>
                   )}
+                  {password &&
+                    confirmPassword &&
+                    password === confirmPassword &&
+                    password.length >= 6 && (
+                      <p className="text-sm text-green-600 mt-1 col-span-2">
+                        Les mots de passe correspondent
+                      </p>
+                    )}
                 </div>
 
                 <div className="flex justify-between pt-4">

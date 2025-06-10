@@ -29,8 +29,16 @@ interface Category {
   id: number;
   name: string;
 }
+
+interface PaginationInfo {
+  currentPage: number;
+  totalPages: number;
+  totalItems: number;
+  itemsPerPage: number;
+}
+
 export default function ExplorerPageContent() {
-  const didInitFromURL = useRef(false); // 👈 new ref
+  const didInitFromURL = useRef(false);
 
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedService, setSelectedService] = useState("");
@@ -38,7 +46,7 @@ export default function ExplorerPageContent() {
   const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
 
   const [showPopulaireDropdown, setShowPopulaireDropdown] = useState(false);
-  const [selectedSort, setSelectedSort] = useState<string>(""); // store "price_desc"
+  const [selectedSort, setSelectedSort] = useState<string>("");
 
   const [services, setServices] = useState<Service[]>([]);
   const [loading, setLoading] = useState(true);
@@ -46,11 +54,21 @@ export default function ExplorerPageContent() {
   const dropdownRef = useRef<HTMLDivElement>(null);
   const [isMobile, setIsMobile] = useState(false);
   const searchTimeout = useRef<NodeJS.Timeout | null>(null);
+
+  // Pagination state
+  const [pagination, setPagination] = useState<PaginationInfo>({
+    currentPage: 1,
+    totalPages: 1,
+    totalItems: 0,
+    itemsPerPage: 20,
+  });
+
   // Service categories
   const serviceTypes = ["service", "bien"];
   const [categories, setCategories] = useState<Category[]>([]);
   const [showCategoryDropdown, setShowCategoryDropdown] = useState(false);
   const searchParams = useSearchParams();
+
   useEffect(() => {
     if (didInitFromURL.current || categories.length === 0) return;
 
@@ -83,7 +101,8 @@ export default function ExplorerPageContent() {
     if (!didInitFromURL.current) return;
 
     const timer = setTimeout(() => {
-      fetchServices();
+      setPagination((prev) => ({ ...prev, currentPage: 1 })); // Reset to page 1 when filters change
+      fetchServices(1); // Start from page 1
     }, 300);
     return () => clearTimeout(timer);
   }, [areaFilter]);
@@ -91,18 +110,14 @@ export default function ExplorerPageContent() {
   // Detect mobile view
   useEffect(() => {
     const handleResize = () => {
-      setIsMobile(window.innerWidth < 640); // sm breakpoint in Tailwind
+      setIsMobile(window.innerWidth < 640);
     };
 
-    // Set initial value
     handleResize();
-
-    // Add event listener
     window.addEventListener("resize", handleResize);
-
-    // Cleanup
     return () => window.removeEventListener("resize", handleResize);
   }, []);
+
   useEffect(() => {
     const fetchCategories = async () => {
       try {
@@ -115,6 +130,7 @@ export default function ExplorerPageContent() {
     };
     fetchCategories();
   }, []);
+
   // Add this effect to handle clicks outside of the dropdown
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
@@ -131,6 +147,7 @@ export default function ExplorerPageContent() {
       document.removeEventListener("mousedown", handleClickOutside);
     };
   }, []);
+
   useEffect(() => {
     return () => {
       if (searchTimeout.current) {
@@ -138,9 +155,9 @@ export default function ExplorerPageContent() {
       }
     };
   }, []);
-  // Function to fetch services from API
 
-  const fetchServices = async () => {
+  // Function to fetch services from API with pagination
+  const fetchServices = async (page: number = pagination.currentPage) => {
     setLoading(true);
     setError(null);
 
@@ -148,13 +165,17 @@ export default function ExplorerPageContent() {
       // Build query parameters based on filters
       const params = new URLSearchParams();
       if (searchQuery) params.append("search", searchQuery);
-      if (selectedService) params.append("type", selectedService); // Changed to match your API
-      if (areaFilter) params.append("location", areaFilter); // You might need to add this field to your API
+      if (selectedService) params.append("type", selectedService);
+      if (areaFilter) params.append("location", areaFilter);
       if (selectedCategories.length > 0) {
         selectedCategories.forEach((catId) =>
           params.append("category[]", catId)
         );
       }
+
+      // Add pagination parameters
+      params.append("page", page.toString());
+      params.append("limit", pagination.itemsPerPage.toString());
 
       // Add status filter to only show published services
       params.append("status", "published");
@@ -165,8 +186,6 @@ export default function ExplorerPageContent() {
       }
 
       const queryString = params.toString() ? `?${params.toString()}` : "";
-
-      // Use your Symfony API endpoint
       const response = await fetch(`/api/service${queryString}`);
 
       if (!response.ok) {
@@ -181,22 +200,28 @@ export default function ExplorerPageContent() {
           id: apiService.id,
           title: apiService.title,
           description: apiService.description,
-          category: apiService.category.name, // Access nested category name
+          category: apiService.category.name,
           primaryImageUrl:
             apiService.primaryImageUrl || "/placeholder-service.jpg",
           images: apiService.images || [],
-          // You'll need to add image URLs to your API
           price: apiService.price,
-          rating: 4, // You'll need to add this to your API model
-          location: apiService.vendor.city, // You'll need to add location to your model
+          rating: 4,
+          location: apiService.vendor.city,
           createdAt: apiService.createdAt,
         })
       );
 
       setServices(mappedServices);
+
+      // Update pagination info from API response
+      setPagination({
+        currentPage: data.pagination?.currentPage || page,
+        totalPages: data.pagination?.totalPages || 1,
+        totalItems: data.pagination?.totalItems || data.count,
+        itemsPerPage: data.pagination?.itemsPerPage || pagination.itemsPerPage,
+      });
     } catch (err) {
-      setError("Failed to load services. Using mock data instead.");
-      // Fallback to mock dat
+      setError("Failed to load services. Please try again.");
     } finally {
       setLoading(false);
     }
@@ -214,17 +239,17 @@ export default function ExplorerPageContent() {
 
     // Set a new timeout to delay the API call
     searchTimeout.current = setTimeout(() => {
-      fetchServices();
+      setPagination((prev) => ({ ...prev, currentPage: 1 })); // Reset to page 1
+      fetchServices(1);
     }, 300);
   };
-
-  // Handle enter key press in search inputs
 
   // Fetch data when component mounts or when filters change
   useEffect(() => {
     if (!didInitFromURL.current) return;
     const timer = setTimeout(() => {
-      fetchServices();
+      setPagination((prev) => ({ ...prev, currentPage: 1 })); // Reset to page 1
+      fetchServices(1);
     }, 300);
     return () => clearTimeout(timer);
   }, [selectedService, selectedCategories]);
@@ -232,7 +257,133 @@ export default function ExplorerPageContent() {
   const resetFilters = () => {
     setSelectedCategories([]);
     setSelectedSort("");
-    fetchServices();
+    setPagination((prev) => ({ ...prev, currentPage: 1 }));
+    fetchServices(1);
+  };
+
+  // Pagination handlers
+  const handlePageChange = (newPage: number) => {
+    setPagination((prev) => ({ ...prev, currentPage: newPage }));
+    fetchServices(newPage);
+    // Scroll to top
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  };
+
+  const renderPagination = () => {
+    if (pagination.totalPages <= 1) return null;
+
+    const pages = [];
+    const maxVisiblePages = isMobile ? 5 : 7;
+    const halfVisible = Math.floor(maxVisiblePages / 2);
+
+    let startPage = Math.max(1, pagination.currentPage - halfVisible);
+    let endPage = Math.min(
+      pagination.totalPages,
+      startPage + maxVisiblePages - 1
+    );
+
+    // Adjust startPage if we're near the end
+    if (endPage - startPage < maxVisiblePages - 1) {
+      startPage = Math.max(1, endPage - maxVisiblePages + 1);
+    }
+
+    // Previous button
+    pages.push(
+      <button
+        key="prev"
+        onClick={() => handlePageChange(pagination.currentPage - 1)}
+        disabled={pagination.currentPage === 1}
+        className="px-3 py-2 text-sm font-medium text-gray-500 bg-white border border-gray-300 rounded-l-md hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+      >
+        Précédent
+      </button>
+    );
+
+    // First page + ellipsis if needed
+    if (startPage > 1) {
+      pages.push(
+        <button
+          key={1}
+          onClick={() => handlePageChange(1)}
+          className="px-3 py-2 text-sm font-medium text-gray-500 bg-white border border-gray-300 hover:bg-gray-50"
+        >
+          1
+        </button>
+      );
+
+      if (startPage > 2) {
+        pages.push(
+          <span
+            key="ellipsis1"
+            className="px-3 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300"
+          >
+            ...
+          </span>
+        );
+      }
+    }
+
+    // Page numbers
+    for (let i = startPage; i <= endPage; i++) {
+      pages.push(
+        <button
+          key={i}
+          onClick={() => handlePageChange(i)}
+          className={`px-3 py-2 text-sm font-medium border ${
+            i === pagination.currentPage
+              ? "bg-[#38AC8E] text-white border-[#38AC8E]"
+              : "text-gray-500 bg-white border-gray-300 hover:bg-gray-50"
+          }`}
+        >
+          {i}
+        </button>
+      );
+    }
+
+    // Last page + ellipsis if needed
+    if (endPage < pagination.totalPages) {
+      if (endPage < pagination.totalPages - 1) {
+        pages.push(
+          <span
+            key="ellipsis2"
+            className="px-3 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300"
+          >
+            ...
+          </span>
+        );
+      }
+
+      pages.push(
+        <button
+          key={pagination.totalPages}
+          onClick={() => handlePageChange(pagination.totalPages)}
+          className="px-3 py-2 text-sm font-medium text-gray-500 bg-white border border-gray-300 hover:bg-gray-50"
+        >
+          {pagination.totalPages}
+        </button>
+      );
+    }
+
+    // Next button
+    pages.push(
+      <button
+        key="next"
+        onClick={() => handlePageChange(pagination.currentPage + 1)}
+        disabled={pagination.currentPage === pagination.totalPages}
+        className="px-3 py-2 text-sm font-medium text-gray-500 bg-white border border-gray-300 rounded-r-md hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+      >
+        Suivant
+      </button>
+    );
+
+    return (
+      <div className="flex flex-col items-center space-y-4 mt-8">
+        {/* Pagination info */}
+
+        {/* Pagination buttons */}
+        <div className="flex">{pages}</div>
+      </div>
+    );
   };
 
   return (
@@ -250,6 +401,7 @@ export default function ExplorerPageContent() {
           vous, en France et dans le Bénélux.
         </p>
       </div>
+
       {/* ======= DESKTOP SEARCH SECTION ======= */}
       <div className="hidden sm:block mb-24 max-w-2xl mx-auto">
         <div className="flex flex-wrap justify-between gap-2">
@@ -319,7 +471,7 @@ export default function ExplorerPageContent() {
               placeholder="Vichy"
               className="min-w-0 w-full bg-transparent focus:outline-none text-gray-700 text-xs"
               value={areaFilter}
-              onChange={(e) => setAreaFilter(e.target.value)} // ✅ This updates the areaFilter
+              onChange={(e) => setAreaFilter(e.target.value)}
             />
 
             <svg
@@ -345,6 +497,7 @@ export default function ExplorerPageContent() {
           </div>
         </div>
       </div>
+
       {/* ======= MOBILE SEARCH SECTION ======= */}
       <div className="sm:hidden mb-3">
         {/* Search bar with services dropdown - fixed design */}
@@ -409,7 +562,7 @@ export default function ExplorerPageContent() {
             placeholder="Vichy"
             className="min-w-0 w-full bg-transparent focus:outline-none text-gray-700 text-xs"
             value={areaFilter}
-            onChange={(e) => setAreaFilter(e.target.value)} // ✅ This updates the areaFilter
+            onChange={(e) => setAreaFilter(e.target.value)}
           />
 
           <svg
@@ -434,6 +587,7 @@ export default function ExplorerPageContent() {
           </svg>
         </div>
       </div>
+
       {/* ======= DESKTOP CATEGORY FILTERS ======= */}
       <div className="hidden sm:flex justify-between mb-8 items-center">
         <div className="relative inline-block">
@@ -490,7 +644,8 @@ export default function ExplorerPageContent() {
                   onClick={() => {
                     setSelectedCategories([]);
                     setShowCategoryDropdown(false);
-                    fetchServices(); // refetch with no category filter
+                    setPagination((prev) => ({ ...prev, currentPage: 1 }));
+                    fetchServices(1);
                   }}
                   className="text-xs text-red-500 hover:underline"
                 >
@@ -562,7 +717,8 @@ export default function ExplorerPageContent() {
                   onClick={() => {
                     setSelectedCategories([]);
                     setShowCategoryDropdown(false);
-                    fetchServices(); // refetch with no category filter
+                    setPagination((prev) => ({ ...prev, currentPage: 1 }));
+                    fetchServices(1);
                   }}
                   className="text-xs text-red-500 hover:underline"
                 >
@@ -573,8 +729,6 @@ export default function ExplorerPageContent() {
           )}
         </div>
       </div>
-
-      {/* Mobile category tabs horizontal scrolling */}
 
       {/* Loading state */}
       {loading && (
@@ -588,6 +742,7 @@ export default function ExplorerPageContent() {
           Aucun service trouvé.
         </div>
       )}
+
       {/* ======= DESKTOP SERVICES GRID ======= */}
       {!loading && (
         <div className="hidden sm:grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-x-6 gap-y-8">
@@ -605,6 +760,9 @@ export default function ExplorerPageContent() {
           ))}
         </div>
       )}
+
+      {/* Pagination Component */}
+      {!loading && renderPagination()}
     </div>
   );
 }

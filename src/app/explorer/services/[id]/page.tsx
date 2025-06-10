@@ -287,7 +287,7 @@ export default function ServiceDetailPage() {
                     alt="Energy coins"
                     width={40}
                     height={40}
-                    className="object-cover ml-2 w-5 h-5"
+                    className="object-cover ml-2 w-6 h-5"
                   />
                 </div>
                 <p className="text-gray-500 text-sm">
@@ -426,7 +426,7 @@ export default function ServiceDetailPage() {
             <Image
               src="/coin.png"
               alt="Energy coins"
-              width={20}
+              width={24}
               height={20}
               className="ml-1"
             />
