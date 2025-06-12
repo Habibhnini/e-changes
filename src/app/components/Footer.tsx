@@ -37,7 +37,6 @@ const Footer: React.FC = () => {
                 <p className="font-semibold text-gray-800">
                   Association E-changes (loi 1901)
                 </p>
-                <p>Luc Mégret, Président</p>
                 <p>03200 VICHY</p>
 
                 <button
