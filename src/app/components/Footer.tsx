@@ -16,7 +16,7 @@ const Footer: React.FC = () => {
   return (
     <>
       <footer className="bg-gray-50 py-16 px-4 border-t border-gray-200">
-        <div className="max-w-6xl mx-auto">
+        <div className="max-w-4xl mx-auto">
           {/* Logo */}
           <div className="text-center mb-12">
             <img
@@ -26,10 +26,10 @@ const Footer: React.FC = () => {
             />
           </div>
 
-          {/* Main Content Grid */}
-          <div className="grid md:grid-cols-3 gap-12 mb-12">
+          {/* Main Content Grid - Now 2 columns */}
+          <div className="grid md:grid-cols-2 gap-16 mb-12">
             {/* Contact Information */}
-            <div>
+            <div className="text-center md:text-left">
               <h3 className="text-lg font-bold text-gray-900 mb-6">
                 Nous contacter
               </h3>
@@ -38,36 +38,21 @@ const Footer: React.FC = () => {
                   Association E-changes (loi 1901)
                 </p>
                 <p>Luc Mégret, Président</p>
-                <p>24 rue du président Wilson</p>
                 <p>03200 VICHY</p>
-                <a
-                  href="mailto:contact@e-changes.com"
-                  className="text-[#38AC8E] hover:text-[#2DD4BF] transition-colors duration-200 font-medium"
-                >
-                  contact@e-changes.com
-                </a>
+                <p>
+                  Email :
+                  <a
+                    href="mailto:contact@e-changes.com"
+                    className="text-[#38AC8E] hover:text-[#2DD4BF] transition-colors duration-200 font-medium ml-1"
+                  >
+                    contact@e-changes.com
+                  </a>
+                </p>
               </div>
             </div>
 
             {/* Legal Information */}
-            <div>
-              <h3 className="text-lg font-bold text-gray-900 mb-6">
-                Mentions légales
-              </h3>
-              <div className="space-y-3 text-gray-600">
-                <div className="pt-4">
-                  <button
-                    onClick={openContactPopup}
-                    className="font-semibold text-gray-800 hover:text-[#38AC8E] transition-colors duration-200 cursor-pointer"
-                  >
-                    Nous contacter
-                  </button>
-                </div>
-              </div>
-            </div>
-
-            {/* Policies */}
-            <div>
+            <div className="text-center md:text-left">
               <h3 className="text-lg font-bold text-gray-900 mb-6">
                 Informations légales
               </h3>
@@ -108,7 +93,7 @@ const Footer: React.FC = () => {
       {/* Contact Popup */}
       {isContactPopupOpen && (
         <div className="fixed inset-0 backdrop-blur-md bg-black/10 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-lg max-w-md w-full p-6 relative">
+          <div className="bg-white rounded-lg max-w-md w-full p-6 relative shadow-2xl">
             {/* Close button */}
             <button
               onClick={closeContactPopup}
@@ -132,19 +117,20 @@ const Footer: React.FC = () => {
             {/* Popup content */}
             <div>
               <h3 className="text-xl font-bold text-gray-900 mb-6">
-                Mentions légales
+                Information supplémentaire
               </h3>
-              <div className="space-y-3 text-gray-600">
+              <div className="space-y-4 text-gray-600">
                 <div>
                   <p className="font-semibold text-gray-800">
                     Responsable de publication
                   </p>
                   <p>Luc Mégret</p>
                 </div>
-                <div className="pt-4">
-                  <p className="font-semibold text-gray-800">Nous contacter</p>
+
+                <div>
+                  <p className="font-semibold text-gray-800">Contact</p>
                   <p>
-                    Par email :
+                    Email :
                     <a
                       href="mailto:contact@e-changes.com"
                       className="text-[#38AC8E] hover:text-[#2DD4BF] transition-colors duration-200 font-medium ml-1"
