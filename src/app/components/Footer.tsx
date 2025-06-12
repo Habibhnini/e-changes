@@ -31,7 +31,7 @@ const Footer: React.FC = () => {
             {/* Contact Information */}
             <div className="text-center md:text-left">
               <h3 className="text-lg font-bold text-gray-900 mb-6">
-                Nous contacter
+                Informations Générales
               </h3>
               <div className="space-y-3 text-gray-600">
                 <p className="font-semibold text-gray-800">
@@ -39,15 +39,13 @@ const Footer: React.FC = () => {
                 </p>
                 <p>Luc Mégret, Président</p>
                 <p>03200 VICHY</p>
-                <p>
-                  Email :
-                  <a
-                    href="mailto:contact@e-changes.com"
-                    className="text-[#38AC8E] hover:text-[#2DD4BF] transition-colors duration-200 font-medium ml-1"
-                  >
-                    contact@e-changes.com
-                  </a>
-                </p>
+
+                <button
+                  onClick={openContactPopup}
+                  className="font-semibold text-gray-800 hover:text-[#38AC8E] transition-colors duration-200 cursor-pointer underline hover:no-underline"
+                >
+                  Nous contacter
+                </button>
               </div>
             </div>
 
@@ -117,7 +115,7 @@ const Footer: React.FC = () => {
             {/* Popup content */}
             <div>
               <h3 className="text-xl font-bold text-gray-900 mb-6">
-                Information supplémentaire
+                Nous contacter
               </h3>
               <div className="space-y-4 text-gray-600">
                 <div>
