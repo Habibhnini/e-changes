@@ -15,7 +15,6 @@ import { loadStripe } from "@stripe/stripe-js";
 import StripeSubscribeButton from "../components/StripeSubscibeButton";
 import { useSubscriptionStatus } from "../hooks/useSubscription";
 import SubscriptionRequired from "../components/SubscriptionRequired";
-import { useRouter } from "next/navigation";
 
 export default function ProfilePage() {
   const [activeTab, setActiveTab] = useState("donnees");
@@ -26,7 +25,13 @@ export default function ProfilePage() {
   const [userBiens, setUserBiens] = useState<Service[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const { logout, user, refreshUserProfile } = useAuth();
+  const {
+    logout,
+    user,
+    refreshUserProfile,
+    isAuthenticated,
+    makeAuthenticatedRequest,
+  } = useAuth();
   const [isEditing, setIsEditing] = useState(false);
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
@@ -43,14 +48,15 @@ export default function ProfilePage() {
     message: "",
     type: "",
   });
-  const router = useRouter();
 
-  useEffect(() => {
-    const token = localStorage.getItem("token");
-    if (!token) {
-      router.push("/auth");
-    }
-  }, []);
+  // If user is not authenticated, AuthContext will handle redirect
+  if (!isAuthenticated) {
+    return (
+      <div className="flex justify-center items-center h-screen">
+        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-[#38AC8E]"></div>
+      </div>
+    );
+  }
 
   const getFullImageUrl = (url: string): string => {
     if (!url) return "/logo.jpg";
@@ -130,7 +136,7 @@ export default function ProfilePage() {
     setImagePreview(null);
   };
 
-  // Enhanced form submission with better validation
+  // Enhanced form submission with better validation and token handling
   const handleSubmit = async (e: {
     preventDefault: () => void;
     currentTarget: HTMLFormElement | undefined;
@@ -175,13 +181,11 @@ export default function ProfilePage() {
     }
 
     try {
-      const response = await fetch(
+      // Use the enhanced authenticated request method
+      const response = await makeAuthenticatedRequest(
         `${process.env.NEXT_PUBLIC_API_URL}/api/user/update`,
         {
           method: "POST",
-          headers: {
-            Authorization: `Bearer ${localStorage.getItem("token")}`,
-          },
           body: formData,
         }
       );
@@ -199,21 +203,27 @@ export default function ProfilePage() {
         setImagePreview(null);
       }
     } catch (error) {
+      if (
+        typeof error === "object" &&
+        error !== null &&
+        "message" in error &&
+        typeof (error as any).message === "string" &&
+        (error as any).message === "Token expired"
+      ) {
+        // Token expired, user will be redirected by AuthContext
+        return;
+      }
       showNotification("Une erreur réseau est survenue", "error");
     }
   };
 
+  // Enhanced subscription fetch with token handling
   useEffect(() => {
     const fetchSubscription = async () => {
       if (!user?.id) return;
       try {
-        const res = await fetch(
-          `${process.env.NEXT_PUBLIC_API_URL}/api/subscription/user/${user.id}`,
-          {
-            headers: {
-              Authorization: `Bearer ${localStorage.getItem("token")}`,
-            },
-          }
+        const res = await makeAuthenticatedRequest(
+          `${process.env.NEXT_PUBLIC_API_URL}/api/subscription/user/${user.id}`
         );
 
         if (!res.ok) {
@@ -223,12 +233,22 @@ export default function ProfilePage() {
         const data = await res.json();
         setSubscription(data);
       } catch (err) {
+        if (
+          typeof err === "object" &&
+          err !== null &&
+          "message" in err &&
+          typeof (err as any).message === "string" &&
+          (err as any).message === "Token expired"
+        ) {
+          // Token expired, user will be redirected by AuthContext
+          return;
+        }
         setSubscription(null);
       }
     };
 
     fetchSubscription();
-  }, [user]);
+  }, [user, makeAuthenticatedRequest]);
 
   // Mock subscription data
   const subscriptionData = {
@@ -271,6 +291,7 @@ export default function ProfilePage() {
     // Refresh the services list
     await handleCreated();
   };
+
   const handleUpdated = async () => {
     console.log("=== PROFILE PAGE UPDATE CALLBACK ===");
     // Refresh the services/biens data
@@ -307,7 +328,8 @@ export default function ProfilePage() {
       location: item.vendor?.city || "Non spécifié",
       rating: 4,
     }));
-  // Charger les données réelles au chargement de la page
+
+  // Enhanced profile data loading with token handling
   useEffect(() => {
     const fetchProfileData = async () => {
       setLoading(true);
@@ -331,7 +353,7 @@ export default function ProfilePage() {
           setUserBiens(mapWithImages(biens));
         }
       } catch (err) {
-        //  console.error("Erreur lors du chargement des données:", err);
+        console.error("Erreur lors du chargement des données:", err);
         setError(
           "Impossible de charger les données. Veuillez réessayer plus tard."
         );
@@ -340,8 +362,11 @@ export default function ProfilePage() {
       }
     };
 
-    fetchProfileData();
+    if (user?.id) {
+      fetchProfileData();
+    }
   }, [user]);
+
   const handleCreated = async () => {
     // Recharger les services/biens au lieu de recharger toute la page
     try {
@@ -362,9 +387,10 @@ export default function ProfilePage() {
         setUserBiens(biens);
       }
     } catch (err) {
-      //  console.error("Erreur lors du rechargement des services:", err);
+      console.error("Erreur lors du rechargement des services:", err);
     }
   };
+
   return (
     <div className="max-w-[90%] mx-auto p-4 font-assistant">
       {/* Navigation Tabs */}
@@ -419,7 +445,7 @@ export default function ProfilePage() {
         </button>
       </div>
 
-      {/* User Profile Card - Always visible */}
+      {/* Services Tab - Now with proper authentication check */}
       {activeTab === "services" &&
         (subscriptionLoading ? (
           <div className="text-center mt-10 text-gray-500">Chargement...</div>
@@ -496,7 +522,7 @@ export default function ProfilePage() {
                               onClick={() => handleServiceClick(service)}
                             >
                               <div className="w-full h-48 bg-white rounded-lg mb-2 transition-all duration-300 group-hover:shadow-lg relative overflow-hidden border border-gray-200">
-                                {/* Placeholder image */}
+                                {/* Service display content */}
                                 <div className="flex items-center justify-center h-full w-full ">
                                   {service.primaryImageUrl ? (
                                     <Image
@@ -592,7 +618,7 @@ export default function ProfilePage() {
                               onClick={() => handleServiceClick(bien)}
                             >
                               <div className="w-full h-48 bg-white rounded-lg mb-2 transition-all duration-300 group-hover:shadow-lg relative overflow-hidden border border-gray-200">
-                                {/* Placeholder image */}
+                                {/* Bien display content */}
                                 <div className="flex items-center justify-center h-full w-full ">
                                   {bien.primaryImageUrl ? (
                                     <Image
@@ -670,6 +696,7 @@ export default function ProfilePage() {
         ) : (
           <SubscriptionRequired />
         ))}
+
       {/* Modal */}
       {showModal && modalType && user && (
         <ServiceModal
@@ -677,12 +704,14 @@ export default function ProfilePage() {
           vendorId={user.id}
           onClose={closeModal}
           onCreated={handleCreated}
-          onUpdated={handleUpdated} // Make sure this is handleUpdated, not handleCreated
+          onUpdated={handleUpdated}
           onDepublished={handleDepublished}
           mode={modalMode}
           serviceData={selectedService}
         />
       )}
+
+      {/* Notification Component */}
       {notification.show && (
         <div
           className={`fixed top-6 right-6 p-4 rounded-lg shadow-lg max-w-md z-50 transition-all transform ${
@@ -764,10 +793,11 @@ export default function ProfilePage() {
           </div>
         </div>
       )}
+
       {/* Données Personnelles Section */}
       {activeTab === "donnees" && (
         <div className="space-y-6">
-          {/* Referral Banner - Keep as is */}
+          {/* Referral Banner */}
           <div className="mb-6 border-[0.5px] rounded-2xl border-gray-200">
             {/* Yellow Banner */}
             <div className="bg-yellow-300 rounded-2xl overflow-hidden">
@@ -1104,12 +1134,11 @@ export default function ProfilePage() {
           </div>
         </div>
       )}
+
       {/* Adhésion Section */}
       {activeTab === "adhesion" && (
         <div className="space-y-6">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            {/* Payment Information */}
-
             {/* Subscription Status */}
             <div className="bg-white rounded-2xl p-4 pt-2 border border-gray-200">
               <h2 className="text-gray-900 font-medium text-base mb-4 pb-2 border-b border-gray-300">
@@ -1151,6 +1180,8 @@ export default function ProfilePage() {
                 )}
               </div>
             </div>
+
+            {/* Payment History */}
             <div className="bg-white rounded-2xl p-4 pt-2 border border-gray-200">
               <h2 className="text-gray-900 font-medium mb-4 pb-2 border-b border-gray-300">
                 Historique de paiements
@@ -1185,7 +1216,7 @@ export default function ProfilePage() {
                   ) : (
                     <tr>
                       <td
-                        colSpan={4}
+                        colSpan={3}
                         className="text-center text-gray-500 py-4"
                       >
                         Aucune souscription trouvée.

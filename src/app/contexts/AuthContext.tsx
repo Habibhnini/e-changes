@@ -9,6 +9,7 @@ import React, {
 } from "react";
 import { useRouter } from "next/navigation";
 import { loadStripe } from "@stripe/stripe-js";
+
 interface User {
   userInfo: any;
   id: number;
@@ -39,6 +40,7 @@ interface RegistrationData {
   idCardFront?: File;
   idCardBack?: File;
 }
+
 interface Notification {
   id: number;
   title: string;
@@ -72,6 +74,11 @@ interface AuthContextType {
   setUnreadCount?: (value: number) => void;
   refreshUserProfile: () => Promise<void>;
   setNotifications: React.Dispatch<React.SetStateAction<Notification[]>>;
+  checkTokenValidity: () => boolean;
+  makeAuthenticatedRequest: (
+    url: string,
+    options?: RequestInit
+  ) => Promise<Response>;
 }
 
 interface BillingDetails {
@@ -93,19 +100,67 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const eventSourceRef = useRef<EventSource | null>(null);
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [unreadCount, setUnreadCount] = useState<number>(0);
+  const tokenCheckIntervalRef = useRef<NodeJS.Timeout | null>(null);
+
+  // 🔥 NEW: Token expiration utility
+  const isTokenExpired = (token: string): boolean => {
+    try {
+      const payload = JSON.parse(atob(token.split(".")[1]));
+      return payload.exp * 1000 < Date.now();
+    } catch {
+      return true;
+    }
+  };
+
+  // 🔥 NEW: Check token validity
+  const checkTokenValidity = (): boolean => {
+    const storedToken = localStorage.getItem("token");
+    if (!storedToken || isTokenExpired(storedToken)) {
+      logout();
+      return false;
+    }
+    return true;
+  };
+
+  // 🔥 ENHANCED: Initial token check and periodic validation
   useEffect(() => {
     const storedToken = localStorage.getItem("token");
     const storedUser = localStorage.getItem("user");
 
     if (storedToken) {
+      // Check if token is expired on mount
+      if (isTokenExpired(storedToken)) {
+        logout();
+        return;
+      }
+
       setToken(storedToken);
+
+      // Set up periodic token validation
+      tokenCheckIntervalRef.current = setInterval(() => {
+        if (!checkTokenValidity()) {
+          if (tokenCheckIntervalRef.current) {
+            clearInterval(tokenCheckIntervalRef.current);
+          }
+        }
+      }, 600000); // Check every minute
     }
+
     if (storedUser) {
       setUser(JSON.parse(storedUser));
     }
 
     setLoading(false);
+
+    // Cleanup interval on unmount
+    return () => {
+      if (tokenCheckIntervalRef.current) {
+        clearInterval(tokenCheckIntervalRef.current);
+      }
+    };
   }, []);
+
+  // 🔥 ENHANCED: Fetch user profile with token validation
   const fetchUserProfile = async (currentToken: string) => {
     try {
       const response = await fetch("/api/me", {
@@ -113,6 +168,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           Authorization: `Bearer ${currentToken}`,
         },
       });
+
+      // Handle token expiration
+      if (response.status === 401) {
+        logout();
+        throw new Error("Token expired");
+      }
 
       if (!response.ok) {
         throw new Error("Failed to fetch user profile");
@@ -123,29 +184,55 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       localStorage.setItem("user", JSON.stringify(userData));
       return userData;
     } catch (error) {
-      // console.error("Error fetching user profile:", error);
       setUser(null);
       setToken(null);
       localStorage.removeItem("token");
       throw error;
     }
   };
+
   const refreshUserProfile = async () => {
     const currentToken = localStorage.getItem("token");
-    if (currentToken) {
+    if (currentToken && !isTokenExpired(currentToken)) {
       await fetchUserProfile(currentToken);
+    } else {
+      logout();
     }
   };
 
+  // 🔥 ENHANCED: API call wrapper with token validation
+  const makeAuthenticatedRequest = async (
+    url: string,
+    options: RequestInit = {}
+  ) => {
+    const currentToken = localStorage.getItem("token");
+
+    if (!currentToken || isTokenExpired(currentToken)) {
+      logout();
+      throw new Error("Token expired");
+    }
+
+    const response = await fetch(url, {
+      ...options,
+      headers: {
+        ...options.headers,
+        Authorization: `Bearer ${currentToken}`,
+      },
+    });
+
+    if (response.status === 401) {
+      logout();
+      throw new Error("Token expired");
+    }
+
+    return response;
+  };
+
+  // 🔥 ENHANCED: Mercure authentication with token validation
   const authenticateNotificationMercure = async (userId: number) => {
     try {
-      const res = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL}/api/mercure/auth?topic=/user/${userId}/notifications`,
-        {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        }
+      const res = await makeAuthenticatedRequest(
+        `${process.env.NEXT_PUBLIC_API_URL}/api/mercure/auth?topic=/user/${userId}/notifications`
       );
 
       if (!res.ok) throw new Error("Notification Mercure auth failed");
@@ -153,16 +240,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       const data = await res.json();
       return data.token;
     } catch (err) {
-      // console.error("Notification Mercure auth error:", err);
       return null;
     }
   };
+
+  // 🔥 ENHANCED: Fetch notifications with token validation
   useEffect(() => {
     const fetchUnreadNotifications = async () => {
       try {
-        const res = await fetch("/api/notifications/unread", {
-          headers: { Authorization: `Bearer ${token}` },
-        });
+        const res = await makeAuthenticatedRequest("/api/notifications/unread");
         const data = await res.json();
         if (data.notifications) {
           setNotifications(data.notifications);
@@ -214,14 +300,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     };
   }, [user?.id, token]);
 
+  // 🔥 ENHANCED: Wallet Mercure with token validation
   const authenticateWalletMercure = async (userId: number) => {
     try {
-      const url = `${process.env.NEXT_PUBLIC_API_URL}/api/mercure/auth?topic=/user/${userId}/wallet`;
-      const res = await fetch(url, {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      });
+      const res = await makeAuthenticatedRequest(
+        `${process.env.NEXT_PUBLIC_API_URL}/api/mercure/auth?topic=/user/${userId}/wallet`
+      );
 
       if (!res.ok) {
         throw new Error("Wallet Mercure auth failed");
@@ -230,7 +314,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       const data = await res.json();
       return data.token;
     } catch (err) {
-      // console.error("Wallet Mercure auth error:", err);
       return null;
     }
   };
@@ -313,8 +396,19 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
       setToken(data.token);
       await fetchUserProfile(data.token);
+
+      // 🔥 NEW: Start token validation interval after successful login
+      if (tokenCheckIntervalRef.current) {
+        clearInterval(tokenCheckIntervalRef.current);
+      }
+      tokenCheckIntervalRef.current = setInterval(() => {
+        if (!checkTokenValidity()) {
+          if (tokenCheckIntervalRef.current) {
+            clearInterval(tokenCheckIntervalRef.current);
+          }
+        }
+      }, 600000);
     } catch (error) {
-      //  console.error("Login error:", error);
       throw error;
     } finally {
       setLoading(false);
@@ -351,6 +445,18 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setToken(data.token);
       setUser(data.user);
 
+      // 🔥 NEW: Start token validation interval after successful registration
+      if (tokenCheckIntervalRef.current) {
+        clearInterval(tokenCheckIntervalRef.current);
+      }
+      tokenCheckIntervalRef.current = setInterval(() => {
+        if (!checkTokenValidity()) {
+          if (tokenCheckIntervalRef.current) {
+            clearInterval(tokenCheckIntervalRef.current);
+          }
+        }
+      }, 600000);
+
       // If we have identity documents, upload them right away
       if (
         registrationData.photoId &&
@@ -382,7 +488,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       await startStripeCheckout(registrationData.email);
       return data;
     } catch (error) {
-      //  console.error("Registration error:", error);
       throw error;
     } finally {
       setLoading(false);
@@ -429,11 +534,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       formData.append("idCardFront", idCardFront);
       formData.append("idCardBack", idCardBack);
 
-      const response = await fetch("/api/verify-identity", {
+      // 🔥 ENHANCED: Use authenticated request wrapper
+      const response = await makeAuthenticatedRequest("/api/verify-identity", {
         method: "POST",
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
         body: formData,
       });
 
@@ -447,7 +550,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
       return await response.json();
     } catch (error) {
-      //  console.error("Identity verification error:", error);
       throw error;
     }
   };
@@ -459,11 +561,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
 
     try {
-      const response = await fetch("/api/subscribe", {
+      // 🔥 ENHANCED: Use authenticated request wrapper
+      const response = await makeAuthenticatedRequest("/api/subscribe", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
         },
         body: JSON.stringify(billingDetails),
       });
@@ -478,17 +580,33 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
       return await response.json();
     } catch (error) {
-      //   console.error("Subscription error:", error);
       throw error;
     }
   };
 
-  // Logout function
+  // 🔥 ENHANCED: Logout function
   const logout = () => {
+    // Clear token validation interval
+    if (tokenCheckIntervalRef.current) {
+      clearInterval(tokenCheckIntervalRef.current);
+      tokenCheckIntervalRef.current = null;
+    }
+
+    // Close any open EventSource connections
+    if (eventSourceRef.current) {
+      eventSourceRef.current.close();
+      eventSourceRef.current = null;
+    }
+
+    // Clear storage and state
     localStorage.removeItem("token");
     localStorage.removeItem("user");
     setToken(null);
     setUser(null);
+    setNotifications([]);
+    setUnreadCount(0);
+
+    // Redirect to login
     router.push("/auth");
   };
 
@@ -510,6 +628,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         setUnreadCount,
         refreshUserProfile,
         setNotifications,
+        checkTokenValidity,
+        makeAuthenticatedRequest,
       }}
     >
       {children}

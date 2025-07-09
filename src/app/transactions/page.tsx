@@ -1,26 +1,22 @@
 "use client";
 
-import { Suspense, useEffect } from "react";
+import { Suspense } from "react";
 import TransactionPage from "./TransactionPage";
 import { useSubscriptionStatus } from "../hooks/useSubscription";
 import SubscriptionRequired from "../components/SubscriptionRequired";
-import { useRouter } from "next/navigation";
+import { useAuth } from "../contexts/AuthContext";
+
 export default function Page() {
   const { isActive, loading } = useSubscriptionStatus();
-  const router = useRouter();
+  const { isAuthenticated } = useAuth();
 
-  useEffect(() => {
-    const token = localStorage.getItem("token");
-    if (!token) {
-      router.push("/auth");
-    }
-  }, []);
+  // If user is not authenticated, AuthContext will handle redirect
+  if (!isAuthenticated) {
+    return <LoadingFallback />;
+  }
+
   if (loading) {
-    return (
-      <div className="flex justify-center items-center h-screen">
-        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500" />
-      </div>
-    );
+    return <LoadingFallback />;
   }
 
   if (!isActive) {
@@ -37,7 +33,7 @@ export default function Page() {
 function LoadingFallback() {
   return (
     <div className="flex justify-center items-center h-screen">
-      <div className="animate-spin rounded-full h-10 w-10 border-t-2 border-b-2 border-blue-500" />
+      <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500" />
     </div>
   );
 }

@@ -235,13 +235,6 @@ export default function WalletWidget({ onEnergyUsed }: WalletWidgetProps) {
                   Créé le {formatDate(wallet.createdAt)}
                 </p>
               </div>
-
-              <button
-                onClick={() => setIsTransferModalOpen(true)}
-                className="ml-2 cursor-pointer flex items-center px-4 py-2 rounded-md bg-green-600 hover:bg-green-700 text-white font-medium"
-              >
-                Transférer Énergie
-              </button>
             </div>
           </div>
         </div>

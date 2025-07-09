@@ -4,18 +4,17 @@ import { Suspense } from "react";
 import ChatClient from "./ChatClient";
 import { useSubscriptionStatus } from "../hooks/useSubscription";
 import SubscriptionRequired from "../components/SubscriptionRequired";
-import { useRouter } from "next/navigation";
-import { useEffect } from "react";
+import { useAuth } from "../contexts/AuthContext";
 
 export default function ChatPage() {
   const { isActive, loading } = useSubscriptionStatus();
-  const router = useRouter();
-  useEffect(() => {
-    const token = localStorage.getItem("token");
-    if (!token) {
-      router.push("/auth");
-    }
-  }, []);
+  const { isAuthenticated } = useAuth();
+
+  // If user is not authenticated, AuthContext will handle redirect
+  if (!isAuthenticated) {
+    return <ChatLoadingFallback />;
+  }
+
   if (loading) {
     return <ChatLoadingFallback />;
   }
