@@ -49,15 +49,6 @@ export default function ProfilePage() {
     type: "",
   });
 
-  // If user is not authenticated, AuthContext will handle redirect
-  if (!isAuthenticated) {
-    return (
-      <div className="flex justify-center items-center h-screen">
-        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-[#38AC8E]"></div>
-      </div>
-    );
-  }
-
   const getFullImageUrl = (url: string): string => {
     if (!url) return "/logo.jpg";
     if (url.startsWith("http")) return url;
@@ -365,6 +356,7 @@ export default function ProfilePage() {
     if (user?.id) {
       fetchProfileData();
     }
+    console.log("User ID:", user);
   }, [user]);
 
   const handleCreated = async () => {
@@ -390,6 +382,14 @@ export default function ProfilePage() {
       console.error("Erreur lors du rechargement des services:", err);
     }
   };
+  // If user is not authenticated, AuthContext will handle redirect
+  if (!isAuthenticated) {
+    return (
+      <div className="flex justify-center items-center h-screen">
+        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-[#38AC8E]"></div>
+      </div>
+    );
+  }
 
   return (
     <div className="max-w-[90%] mx-auto p-4 font-assistant">
@@ -832,6 +832,12 @@ export default function ProfilePage() {
                     Votre code de parrainage
                   </p>
                   <p>{user?.referralCode}</p>
+                </div>
+                <div>
+                  <p className="text-gray-600 text-sm mb-1">
+                    Nombre de parrainage
+                  </p>
+                  <p>{user?.userInfo?.nombreDeParrainage}</p>
                 </div>
               </div>
             </div>

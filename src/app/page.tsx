@@ -401,6 +401,19 @@ export default function Home() {
           <div className="flex justify-between items-center relative">
             <div className="p-12 md:pl-36">
               <ul className="space-y-6">
+                <li className="flex items-start">
+                  <div className="w-3 h-3 bg-gray-800 rounded-full mt-2 mr-4 flex-shrink-0"></div>
+                  <h4 className="text-xl font-bold leading-relaxed">
+                    Participez au lancement de cette aventure en vous inscrivant
+                    dès maintenant et obtenez 999
+                    <img
+                      src="/coin.png"
+                      alt="e-nergie"
+                      className="inline w-6 h-5 mx-1"
+                    />
+                    jusqu'au 31 décembre 2025.
+                  </h4>
+                </li>
                 {featuresData.items.map((item, index) => (
                   <li key={index} className="flex items-start">
                     <div className="w-3 h-3 bg-gray-800 rounded-full mt-2 mr-4 flex-shrink-0"></div>

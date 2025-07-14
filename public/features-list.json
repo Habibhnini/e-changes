@@ -1,18 +1,11 @@
 {
   "items": [
     {
-      "text": "Participez au lancement de cette aventure en vous inscrivant dès maintenant et obtenez ",
-      "coinValue": 99,
-      "insteadOfText": "(au lieu du ",
-      "insteadOfValue": 33,
-      "endText": ") - jusqu'au 31 décembre 2025."
-    },
-    {
       "text": "Grâce à votre code de parrainage, obtenez ",
       "coinValue": 99,
       "insteadOfText": "supplémentaires pour vos 100 parrainages. au lieu du ",
       "insteadOfValue": 33,
-      "endText": "- jusqu'au 31 décembre 2025."
+      "endText": "jusqu'au 31 décembre 2025."
     }
   ]
 }
