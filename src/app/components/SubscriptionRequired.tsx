@@ -13,14 +13,14 @@ interface SubscriptionRequiredProps {
 
 const SubscriptionRequired: React.FC<SubscriptionRequiredProps> = ({
   title = "Abonnement requis",
-  message = "Cette fonctionnalité est réservée aux membres avec un abonnement actif . Débloquez l'accès complet à notre plateforme.",
+  message = "Cette fonctionnalité est réservée aux membres avec un abonnement actif. Débloquez l'accès complet à notre plateforme.",
   features = [
     "Accès illimité à toutes les fonctionnalités",
     "Création de services et biens",
     "Négocier des services/biens en temp-réel via chat",
   ],
-  ctaText = "Découvrir nos offres",
-  ctaLink = "/subscription",
+  ctaText = "Souscrire maintenant",
+  ctaLink = "/profile?tab=adhesion",
   className = "",
 }) => {
   return (
@@ -82,6 +82,18 @@ const SubscriptionRequired: React.FC<SubscriptionRequiredProps> = ({
               ))}
             </ul>
           </div>
+
+          {/* CTA Button */}
+          <Link href={ctaLink}>
+            <button className="w-full bg-[#38AC8E] hover:bg-teal-600 text-white font-medium py-3 px-6 rounded-lg transition-colors duration-200 shadow-md hover:shadow-lg">
+              {ctaText}
+            </button>
+          </Link>
+
+          {/* Alternative: Direct payment info */}
+          <p className="text-xs text-gray-500 mt-3">
+            Abonnement annuel à partir de 20€
+          </p>
         </div>
       </div>
     </div>

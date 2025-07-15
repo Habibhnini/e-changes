@@ -1,11 +1,11 @@
 "use client";
-
 import React, { useEffect, useRef, useState } from "react";
 import Image from "next/image";
 import { IoLocationOutline } from "react-icons/io5";
 import { useAuth } from "../contexts/AuthContext";
 import ServiceModal from "../components/ServiceModal";
 import { Service as OriginalService } from "../api/services/routes";
+import { useSearchParams } from "next/navigation";
 
 // Extend Service type to include primaryImageUrl for UI mapping
 type Service = OriginalService & {
@@ -49,6 +49,13 @@ export default function ProfilePage() {
     type: "",
   });
 
+  const searchParams = useSearchParams();
+  useEffect(() => {
+    const tabParam = searchParams.get("tab");
+    if (tabParam && ["donnees", "services", "adhesion"].includes(tabParam)) {
+      setActiveTab(tabParam);
+    }
+  }, [searchParams]);
   const getFullImageUrl = (url: string): string => {
     if (!url) return "/logo.jpg";
     if (url.startsWith("http")) return url;

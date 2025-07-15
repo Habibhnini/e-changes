@@ -303,12 +303,8 @@ export default function ServiceDetailPage() {
                     <dd className="w-4/5">{service.type}</dd>
                   </div>
                   <div className="flex mb-1">
-                    <dt className="text-gray-600 w-1/5">Category</dt>
+                    <dt className="text-gray-600 w-1/5">Categorie</dt>
                     <dd className="w-4/5">{service.category.name} </dd>
-                  </div>
-                  <div className="flex mb-1">
-                    <dt className="text-gray-600 w-1/5">Statut</dt>
-                    <dd className="w-4/5">{service.status}</dd>
                   </div>
                 </dl>
               </div>
