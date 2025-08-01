@@ -168,7 +168,7 @@ const TransactionDetails: React.FC<TransactionDetailsProps> = ({
   const handleCancel = async () => {
     try {
       const res = await fetch(`/api/transactions/${transactionId}/cancel`, {
-        method: "PUT",
+        method: "POST",
         headers: getAuthHeaders(),
       });
 
@@ -478,7 +478,7 @@ const TransactionDetails: React.FC<TransactionDetailsProps> = ({
 
           {/* COMPLETER (PAYER) BUTTON */}
           {transaction.status === "validation" &&
-            currentUser?.id === transaction.buyer?.id && (
+            currentUser?.id === transaction.payer?.id && (
               <button
                 onClick={() => {
                   if (!isCompleteModalOpen) {

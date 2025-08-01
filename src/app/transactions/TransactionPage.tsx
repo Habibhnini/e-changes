@@ -18,14 +18,14 @@ interface Transaction {
   status: string;
   createdAt: string;
   updatedAt: string | null;
-  role: "buyer" | "seller";
+  role: "buyer" | "seller" | "payer" | "payee";
   type: string;
   otherParty: string;
   buyerValidated: boolean;
   sellerValidated: boolean;
 }
 
-type FilterType = "all" | "buyer" | "seller";
+type FilterType = "all" | "payer" | "payee";
 
 // Status badge component
 const StatusBadge: React.FC<{ status: string }> = ({ status }) => {
@@ -434,7 +434,7 @@ export default function TransactionsPage() {
       window.confirm("Êtes-vous sûr de vouloir annuler cette transaction ?")
     ) {
       try {
-        await apiClient.put(`/api/transactions/${transactionId}/cancel`, {});
+        await apiClient.post(`/api/transactions/${transactionId}/cancel`, {});
 
         // Update local state
         const updatedTransactions = transactions.map((transaction) =>
@@ -456,8 +456,8 @@ export default function TransactionsPage() {
   };
 
   // Get counts for the filter tabs
-  const buyerCount = transactions.filter((t) => t.role === "buyer").length;
-  const sellerCount = transactions.filter((t) => t.role === "seller").length;
+  const buyerCount = transactions.filter((t) => t.role === "payer").length;
+  const sellerCount = transactions.filter((t) => t.role === "payee").length;
 
   // Handle wallet energy used (refresh transactions)
   const handleEnergyUsed = () => {
@@ -547,21 +547,21 @@ export default function TransactionsPage() {
             </button>
             <button
               className={`py-3 px-6 border-b-2 font-medium text-sm ${
-                activeFilter === "buyer"
+                activeFilter === "payer"
                   ? "border-blue-500 text-blue-600"
                   : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
               }`}
-              onClick={() => setActiveFilter("buyer")}
+              onClick={() => setActiveFilter("payer")}
             >
               bénéficiaire ({buyerCount})
             </button>
             <button
               className={`py-3 px-6 border-b-2 font-medium text-sm ${
-                activeFilter === "seller"
+                activeFilter === "payee"
                   ? "border-blue-500 text-blue-600"
                   : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
               }`}
-              onClick={() => setActiveFilter("seller")}
+              onClick={() => setActiveFilter("payee")}
             >
               Offrant ({sellerCount})
             </button>
@@ -581,7 +581,7 @@ export default function TransactionsPage() {
             <p className="text-gray-600">
               {activeFilter === "all"
                 ? "Vous n'avez aucune transaction."
-                : activeFilter === "buyer"
+                : activeFilter === "payer"
                 ? "Vous n'avez aucune transaction en tant qu'acheteur."
                 : "Vous n'avez aucune transaction en tant que vendeur."}
             </p>
@@ -658,12 +658,12 @@ export default function TransactionsPage() {
                       <td className="px-6 py-4 whitespace-nowrap">
                         <div
                           className={`text-sm font-medium ${
-                            transaction.role === "buyer"
+                            transaction.role === "payer"
                               ? "text-blue-600"
                               : "text-green-600"
                           }`}
                         >
-                          {transaction.role === "buyer"
+                          {transaction.role === "payer"
                             ? "Acheteur"
                             : "Vendeur"}
                         </div>
@@ -696,7 +696,7 @@ export default function TransactionsPage() {
                       <td className="px-6 py-4 whitespace-nowrap">
                         <div className="flex flex-wrap gap-1">
                           {/* VALIDER */}
-                          {!(transaction.role === "buyer"
+                          {!(transaction.role === "payer"
                             ? transaction.buyerValidated
                             : transaction.sellerValidated) && (
                             <button
@@ -761,11 +761,11 @@ export default function TransactionsPage() {
                             )}
 
                           {/* COMPLETER */}
-                          {transaction.role === "buyer" &&
-                            ["validation"].includes(transaction.status) && (
+                          {transaction.role === "payer" &&
+                            transaction.status === "validation" && (
                               <button
                                 onClick={() => openModal(transaction.id)}
-                                title="Finaliser la transaction"
+                                title="Finaliser la transaction (acheteur)"
                                 className="inline-flex items-center px-2 py-1 text-xs font-medium bg-indigo-500 text-white rounded hover:bg-indigo-600 transition-colors"
                               >
                                 <svg
@@ -784,9 +784,13 @@ export default function TransactionsPage() {
                             )}
 
                           {/* DÉPUBLIER SERVICE */}
-                          {transaction.role === "seller" &&
+                          {((transaction.role === "payer" &&
+                            transaction.type === "announcement") ||
+                            (transaction.role === "payee" &&
+                              (transaction.type === "service" ||
+                                transaction.type === "bien"))) &&
                             transaction.serviceId &&
-                            transaction.serviceStatus == "published" && (
+                            transaction.serviceStatus === "published" && (
                               <button
                                 onClick={(e) => {
                                   e.stopPropagation();

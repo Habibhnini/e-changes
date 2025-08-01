@@ -20,9 +20,13 @@ interface Service {
     sortOrder: number;
   }>;
   price: number;
+  budget?: number; // For announcements
   rating: number;
   location: string;
   createdAt: string;
+  type: string; // Add type field
+  urgency?: string; // For announcements
+  deadline?: string; // For announcements
 }
 
 interface Category {
@@ -41,7 +45,7 @@ export default function ExplorerPageContent() {
   const didInitFromURL = useRef(false);
 
   const [searchQuery, setSearchQuery] = useState("");
-  const [selectedService, setSelectedService] = useState("");
+  const [selectedService, setSelectedService] = useState(""); // Empty by default to show all types
   const [areaFilter, setAreaFilter] = useState("");
   const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
 
@@ -63,8 +67,13 @@ export default function ExplorerPageContent() {
     itemsPerPage: 20,
   });
 
-  // Service categories
-  const serviceTypes = ["service", "bien"];
+  // Service categories - now includes all three types
+  const serviceTypes = [
+    { value: "", label: "Tous" }, // Show all types by default
+    { value: "service", label: "Services" },
+    { value: "bien", label: "Biens" },
+    { value: "announcement", label: "Annonces" },
+  ];
   const [categories, setCategories] = useState<Category[]>([]);
   const [showCategoryDropdown, setShowCategoryDropdown] = useState(false);
   const searchParams = useSearchParams();
@@ -165,7 +174,13 @@ export default function ExplorerPageContent() {
       // Build query parameters based on filters
       const params = new URLSearchParams();
       if (searchQuery) params.append("search", searchQuery);
-      if (selectedService) params.append("type", selectedService);
+
+      // Only add type filter if a specific type is selected (not "Tous")
+      if (selectedService && selectedService !== "") {
+        params.append("type", selectedService);
+      }
+      // If selectedService is empty, don't add type filter - this will show ALL types
+
       if (areaFilter) params.append("location", areaFilter);
       if (selectedCategories.length > 0) {
         selectedCategories.forEach((catId) =>
@@ -204,10 +219,17 @@ export default function ExplorerPageContent() {
           primaryImageUrl:
             apiService.primaryImageUrl || "/placeholder-service.jpg",
           images: apiService.images || [],
-          price: apiService.price,
+          price: apiService.price || apiService.budget || 0, // Handle both price and budget
+          budget: apiService.budget,
           rating: 4,
-          location: apiService.vendor.city,
+          location:
+            apiService.vendor?.city ||
+            apiService.requester?.city ||
+            "Non spécifié",
           createdAt: apiService.createdAt,
+          type: apiService.type, // Include the type
+          urgency: apiService.urgency,
+          deadline: apiService.deadline,
         })
       );
 
@@ -256,6 +278,7 @@ export default function ExplorerPageContent() {
 
   const resetFilters = () => {
     setSelectedCategories([]);
+    setSelectedService(""); // Reset to show all types
     setSelectedSort("");
     setPagination((prev) => ({ ...prev, currentPage: 1 }));
     fetchServices(1);
@@ -397,7 +420,7 @@ export default function ExplorerPageContent() {
           des e-changeurs
         </h2>
         <p className="text-gray-900">
-          Explorez des centaines de services et d&#39;offres autour de chez
+          Explorez des centaines de services, biens et annonces autour de chez
           vous, en France et dans le Bénélux.
         </p>
       </div>
@@ -422,11 +445,9 @@ export default function ExplorerPageContent() {
                 value={selectedService}
                 onChange={(e) => setSelectedService(e.target.value)}
               >
-                <option value="">Type</option>
                 {serviceTypes.map((type) => (
-                  <option key={type} value={type}>
-                    {type.charAt(0).toUpperCase() + type.slice(1)}{" "}
-                    {/* Capitalize */}
+                  <option key={type.value} value={type.value}>
+                    {type.label}
                   </option>
                 ))}
               </select>
@@ -517,11 +538,9 @@ export default function ExplorerPageContent() {
               value={selectedService}
               onChange={(e) => setSelectedService(e.target.value)}
             >
-              <option value="">Type</option>
               {serviceTypes.map((type) => (
-                <option key={type} value={type}>
-                  {type.charAt(0).toUpperCase() + type.slice(1)}{" "}
-                  {/* Capitalize */}
+                <option key={type.value} value={type.value}>
+                  {type.label}
                 </option>
               ))}
             </select>

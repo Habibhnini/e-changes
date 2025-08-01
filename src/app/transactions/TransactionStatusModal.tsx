@@ -7,7 +7,7 @@ interface Transaction {
   status: string;
   createdAt: string;
   updatedAt: string | null;
-  role: "buyer" | "seller";
+  role: "buyer" | "seller" | "payer" | "payee";
   type: string;
   otherParty: string;
   buyerValidated: boolean;

@@ -10,6 +10,22 @@ import { useSearchParams } from "next/navigation";
 // Extend Service type to include primaryImageUrl for UI mapping
 type Service = OriginalService & {
   primaryImageUrl?: string;
+  // Announcement-specific fields
+  budget?: number;
+  deadline?: string;
+  location?: string;
+  urgency?: "low" | "medium" | "high" | "urgent";
+  requirements?: string;
+  isNegotiable?: boolean;
+  // For backward compatibility with both service and announcement data
+  requester?: {
+    id: number;
+    email: string;
+    lastName: string;
+    firstName: string;
+    profileImage?: string;
+    city?: string;
+  };
 };
 import { loadStripe } from "@stripe/stripe-js";
 import StripeSubscribeButton from "../components/StripeSubscibeButton";
@@ -19,10 +35,13 @@ import SubscriptionRequired from "../components/SubscriptionRequired";
 export default function ProfilePageContent() {
   const [activeTab, setActiveTab] = useState("donnees");
   const [showModal, setShowModal] = useState(false);
-  const [modalType, setModalType] = useState<"service" | "bien" | null>(null);
+  const [modalType, setModalType] = useState<
+    "service" | "bien" | "announcement" | null
+  >(null);
   // États pour les données réelles
   const [userServices, setUserServices] = useState<Service[]>([]);
   const [userBiens, setUserBiens] = useState<Service[]>([]);
+  const [userAnnouncements, setUserAnnouncements] = useState<Service[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const {
@@ -56,6 +75,7 @@ export default function ProfilePageContent() {
       setActiveTab(tabParam);
     }
   }, [searchParams]);
+
   const getFullImageUrl = (url: string): string => {
     if (!url) return "/logo.jpg";
     if (url.startsWith("http")) return url;
@@ -264,7 +284,7 @@ export default function ProfilePageContent() {
   };
 
   const openModal = (
-    type: "service" | "bien",
+    type: "service" | "bien" | "announcement",
     mode: "create" | "view" | "edit" = "create",
     service?: Service
   ) => {
@@ -281,7 +301,7 @@ export default function ProfilePageContent() {
   };
 
   const handleServiceClick = (service: Service) => {
-    const serviceType = service.type as "service" | "bien";
+    const serviceType = service.type as "service" | "bien" | "announcement";
     openModal(serviceType, "view", service);
   };
 
@@ -292,7 +312,7 @@ export default function ProfilePageContent() {
 
   const handleUpdated = async () => {
     console.log("=== PROFILE PAGE UPDATE CALLBACK ===");
-    // Refresh the services/biens data
+    // Refresh the services/biens/announcements data
     try {
       const servicesResponse = await fetch(
         `/api/service?vendorId=${user?.id || ""}`
@@ -306,12 +326,17 @@ export default function ProfilePageContent() {
         const biens = servicesData.services.filter(
           (s: { type: string }) => s.type === "bien"
         );
+        const announcements = servicesData.services.filter(
+          (s: { type: string }) => s.type === "announcement"
+        );
 
         console.log("Updated services count:", services.length);
         console.log("Updated biens count:", biens.length);
+        console.log("Updated announcements count:", announcements.length);
 
         setUserServices(mapWithImages(services));
         setUserBiens(mapWithImages(biens));
+        setUserAnnouncements(mapWithImages(announcements));
       }
     } catch (err) {
       console.error("Error refreshing services after update:", err);
@@ -323,7 +348,7 @@ export default function ProfilePageContent() {
       ...item,
       primaryImageUrl: item.primaryImageUrl || "", // needed for display
       images: item.images || [],
-      location: item.vendor?.city || "Non spécifié",
+      location: item.vendor?.city || item.requester?.city || "Non spécifié",
       rating: 4,
     }));
 
@@ -339,16 +364,20 @@ export default function ProfilePageContent() {
         const servicesData = await servicesResponse.json();
 
         if (servicesData && servicesData.services) {
-          // Filtrer les services et les biens
+          // Filtrer les services, les biens et les annonces
           const services = servicesData.services.filter(
             (s: { type: string }) => s.type === "service"
           );
           const biens = servicesData.services.filter(
             (s: { type: string }) => s.type === "bien"
           );
+          const announcements = servicesData.services.filter(
+            (s: { type: string }) => s.type === "announcement"
+          );
 
           setUserServices(mapWithImages(services));
           setUserBiens(mapWithImages(biens));
+          setUserAnnouncements(mapWithImages(announcements));
         }
       } catch (err) {
         console.error("Erreur lors du chargement des données:", err);
@@ -367,7 +396,7 @@ export default function ProfilePageContent() {
   }, [user]);
 
   const handleCreated = async () => {
-    // Recharger les services/biens au lieu de recharger toute la page
+    // Recharger les services/biens/announcements au lieu de recharger toute la page
     try {
       const servicesResponse = await fetch(
         `/api/service?vendorId=${user?.id || ""}`
@@ -381,14 +410,19 @@ export default function ProfilePageContent() {
         const biens = servicesData.services.filter(
           (s: { type: string }) => s.type === "bien"
         );
+        const announcements = servicesData.services.filter(
+          (s: { type: string }) => s.type === "announcement"
+        );
 
         setUserServices(services);
         setUserBiens(biens);
+        setUserAnnouncements(announcements);
       }
     } catch (err) {
       console.error("Erreur lors du rechargement des services:", err);
     }
   };
+
   // If user is not authenticated, AuthContext will handle redirect
   if (!isAuthenticated) {
     return (
@@ -497,7 +531,7 @@ export default function ProfilePageContent() {
               </div>
             </div>
 
-            {/* Services and Biens - Right Side with Horizontal Scroll */}
+            {/* Services, Biens, and Announcements - Right Side with Horizontal Scroll */}
             <div className="md:w-4/5 space-y-8">
               {/* Services */}
               <div>
@@ -574,6 +608,11 @@ export default function ProfilePageContent() {
                                     </div>
                                   </div>
                                 </div>
+                                <div className="absolute top-2 left-2">
+                                  <span className="bg-[#38AC8E] text-white text-xs px-2 py-1 rounded-full">
+                                    Service
+                                  </span>
+                                </div>
                               </div>
 
                               <div className="mt-1 ml-4 flex items-center">
@@ -584,6 +623,120 @@ export default function ProfilePageContent() {
                                   <p className="text-xs text-gray-500 line-clamp-2">
                                     {service.description}
                                   </p>
+                                </div>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              {/* Announcements */}
+              <div>
+                <div className="flex justify-between items-center mb-4">
+                  <h2 className="text-xl font-medium">Mes demandes</h2>
+                  <button
+                    onClick={() => openModal("announcement")}
+                    className="bg-[#FF6B6B] text-white px-4 py-2 rounded-lg text-sm hover:bg-[#FF5252]"
+                  >
+                    Créer une demande
+                  </button>
+                </div>
+
+                <div className="overflow-x-auto pb-4">
+                  <div className="flex gap-4 min-w-max">
+                    {userAnnouncements.length === 0 ? (
+                      <div className="bg-gray-50 rounded-lg p-6 text-center">
+                        <p className="text-gray-500">
+                          Vous n'avez pas encore créé d'annonces.
+                        </p>
+                      </div>
+                    ) : (
+                      <div className="overflow-x-auto pb-4">
+                        <div className="flex gap-4 min-w-max">
+                          {userAnnouncements.map((announcement) => (
+                            <div
+                              key={announcement.id}
+                              className="w-72 ml-2 group transform transition-transform duration-300 hover:scale-[1.03]"
+                              onClick={() => handleServiceClick(announcement)}
+                            >
+                              <div className="w-full h-48 bg-white rounded-lg mb-2 transition-all duration-300 group-hover:shadow-lg relative overflow-hidden border border-gray-200">
+                                {/* Announcement display content */}
+                                <div className="flex items-center justify-center h-full w-full ">
+                                  {announcement.primaryImageUrl ? (
+                                    <Image
+                                      src={getFullImageUrl(
+                                        announcement.primaryImageUrl
+                                      )}
+                                      alt={announcement.title}
+                                      fill
+                                      className="object-cover rounded-lg group-hover:scale-105 transition-transform duration-300"
+                                    />
+                                  ) : (
+                                    <div className="flex items-center justify-center h-full w-full bg-gray-100">
+                                      <Image
+                                        src="/logo.jpg"
+                                        alt="Logo placeholder"
+                                        width={120}
+                                        height={120}
+                                        className="object-contain"
+                                      />
+                                    </div>
+                                  )}
+                                </div>
+
+                                {/* Gradient overlay at the bottom */}
+                                <div className="absolute inset-x-0 bottom-0 h-1/2 bg-gradient-to-t from-black/45 to-transparent rounded-b-lg">
+                                  <div className="absolute bottom-0 left-0 right-0 p-3">
+                                    <div className="flex justify-between items-center">
+                                      <div className="text-[#fce070] text-lg font-medium flex items-center">
+                                        {announcement.budget ||
+                                          announcement.price}
+                                        <Image
+                                          src="/coin.png"
+                                          alt="Budget"
+                                          width={40}
+                                          height={40}
+                                          className="object-cover ml-2 w-6 h-5"
+                                        />
+                                      </div>
+                                      <div className="text-white text-sm flex items-center">
+                                        <IoLocationOutline className="mr-1 w-5 h-5" />
+                                        {announcement.location ||
+                                          user?.userInfo?.city ||
+                                          "Non spécifié"}
+                                      </div>
+                                    </div>
+                                  </div>
+                                </div>
+
+                                {/* Announcement badge */}
+                                <div className="absolute top-2 left-2">
+                                  <span className="bg-[#FF6B6B] text-white text-xs px-2 py-1 rounded-full">
+                                    Recherche
+                                  </span>
+                                </div>
+
+                                {/* Urgency badge if available */}
+                              </div>
+
+                              <div className="mt-1 ml-4 flex items-center">
+                                <div>
+                                  <h3 className="font-medium text-gray-800 group-hover:text-[#FF6B6B] transition-colors duration-200">
+                                    {announcement.title}
+                                  </h3>
+
+                                  {announcement.deadline && (
+                                    <p className="text-xs text-orange-600 mt-1">
+                                      Échéance:{" "}
+                                      {new Date(
+                                        announcement.deadline
+                                      ).toLocaleDateString("fr-FR")}
+                                    </p>
+                                  )}
                                 </div>
                               </div>
                             </div>
@@ -672,6 +825,11 @@ export default function ProfilePageContent() {
                                         {user?.userInfo?.city || "Non spécifié"}
                                       </div>
                                     </div>
+                                  </div>
+                                  <div className="absolute top-2 left-2">
+                                    <span className="bg-[#DEB887] text-white text-xs px-2 py-1 rounded-full">
+                                      Bien
+                                    </span>
                                   </div>
                                 </div>
 

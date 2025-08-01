@@ -10,11 +10,14 @@ import {
   IoPencil,
   IoStop,
   IoPlay,
+  IoLocationOutline,
+  IoCalendarOutline,
+  IoAlertCircleOutline,
 } from "react-icons/io5";
 import Image from "next/image";
 
 interface ServiceModalProps {
-  type: "service" | "bien";
+  type: "service" | "bien" | "announcement";
   vendorId: number;
   onClose: () => void;
   onCreated?: () => void;
@@ -47,7 +50,16 @@ const ServiceModal: React.FC<ServiceModalProps> = ({
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [price, setPrice] = useState<number | "">("");
+  const [budget, setBudget] = useState<number | "">("");
   const [categoryId, setCategoryId] = useState<number | "">("");
+
+  // Announcement-specific fields
+  const [deadline, setDeadline] = useState("");
+  const [location, setLocation] = useState("");
+  const [urgency, setUrgency] = useState("");
+  const [requirements, setRequirements] = useState("");
+  const [isNegotiable, setIsNegotiable] = useState(true);
+
   const [categories, setCategories] = useState<{ id: number; name: string }[]>(
     []
   );
@@ -60,11 +72,36 @@ const ServiceModal: React.FC<ServiceModalProps> = ({
   const [showPublishConfirm, setShowPublishConfirm] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
+  const urgencyOptions = [
+    { value: "", label: "Sélectionner la priorité" },
+    { value: "low", label: "Priorité basse" },
+    { value: "medium", label: "Priorité moyenne" },
+    { value: "high", label: "Priorité haute" },
+    { value: "urgent", label: "Urgent" },
+  ];
+
   useEffect(() => {
     if ((currentMode === "view" || currentMode === "edit") && serviceData) {
       setTitle(serviceData.title || "");
       setDescription(serviceData.description || "");
-      setPrice(serviceData.price || "");
+
+      if (type === "announcement") {
+        setBudget(serviceData.budget || serviceData.price || "");
+        setDeadline(
+          serviceData.deadline ? serviceData.deadline.split("T")[0] : ""
+        );
+        setLocation(serviceData.location || "");
+        setUrgency(serviceData.urgency || "");
+        setRequirements(serviceData.requirements || "");
+        setIsNegotiable(
+          serviceData.isNegotiable !== undefined
+            ? serviceData.isNegotiable
+            : true
+        );
+      } else {
+        setPrice(serviceData.price || "");
+      }
+
       setCategoryId(serviceData.category?.id || "");
 
       // Convert existing images to ImagePreview format
@@ -94,7 +131,7 @@ const ServiceModal: React.FC<ServiceModalProps> = ({
         setOriginalImages([]); // Reset if no images
       }
     }
-  }, [currentMode, serviceData]);
+  }, [currentMode, serviceData, type]);
 
   useEffect(() => {
     async function fetchCategories() {
@@ -262,9 +299,17 @@ const ServiceModal: React.FC<ServiceModalProps> = ({
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    if (!title || !description || price === "" || categoryId === "") {
-      setError("Veuillez remplir tous les champs obligatoires");
-      return;
+    // Validation based on type
+    if (type === "announcement") {
+      if (!title || !description || budget === "" || categoryId === "") {
+        setError("Veuillez remplir tous les champs obligatoires");
+        return;
+      }
+    } else {
+      if (!title || !description || price === "" || categoryId === "") {
+        setError("Veuillez remplir tous les champs obligatoires");
+        return;
+      }
     }
 
     setIsSubmitting(true);
@@ -273,12 +318,25 @@ const ServiceModal: React.FC<ServiceModalProps> = ({
       const formData = new FormData();
       formData.append("title", title);
       formData.append("description", description);
-      formData.append("price", price.toString());
       formData.append("type", type);
       formData.append("status", "published");
       formData.append("requiresApproval", "false");
-      formData.append("vendorId", vendorId.toString());
       formData.append("categoryId", categoryId.toString());
+
+      if (type === "announcement") {
+        formData.append("budget", budget.toString());
+        formData.append("requesterId", vendorId.toString());
+
+        // Add announcement-specific fields
+        if (deadline) formData.append("deadline", deadline);
+        if (location) formData.append("location", location);
+        if (urgency) formData.append("urgency", urgency);
+        if (requirements) formData.append("requirements", requirements);
+        formData.append("isNegotiable", isNegotiable.toString());
+      } else {
+        formData.append("price", price.toString());
+        formData.append("vendorId", vendorId.toString());
+      }
 
       // Handle images for create/update
       let imageIndex = 0;
@@ -303,6 +361,7 @@ const ServiceModal: React.FC<ServiceModalProps> = ({
           imageIndex++;
         }
       });
+
       if (
         primaryIsNewImage &&
         !Array.from(formData.keys()).includes("primaryImageIndex")
@@ -340,8 +399,6 @@ const ServiceModal: React.FC<ServiceModalProps> = ({
         formData.append("primaryImageType", "existing");
       }
 
-      // Debug logging
-
       const url =
         currentMode === "edit" && serviceData?.id
           ? `/api/service/${serviceData.id}`
@@ -375,24 +432,43 @@ const ServiceModal: React.FC<ServiceModalProps> = ({
       setIsSubmitting(false);
     }
   };
+
   const getModalTitle = () => {
-    const serviceType = type === "service" ? "service" : "bien";
+    const serviceType =
+      type === "service" ? "service" : type === "bien" ? "bien" : "annonce";
+
     switch (currentMode) {
       case "create":
-        return `Ajouter un ${serviceType}`;
+        return type === "announcement"
+          ? "Créer une annonce"
+          : `Ajouter un ${serviceType}`;
       case "view":
-        return `Détails du ${serviceType}`;
+        return type === "announcement"
+          ? "Détails de l'annonce"
+          : `Détails du ${serviceType}`;
       case "edit":
-        return `Modifier le ${serviceType}`;
+        return type === "announcement"
+          ? "Modifier l'annonce"
+          : `Modifier le ${serviceType}`;
       default:
-        return `${serviceType}`;
+        return serviceType;
     }
   };
 
-  const submitBtnColor =
-    type === "service"
-      ? "bg-[#38AC8E] hover:bg-teal-600"
-      : "bg-[#DEB887] hover:bg-[#C8A275]";
+  const getSubmitBtnColor = () => {
+    switch (type) {
+      case "service":
+        return "bg-[#38AC8E] hover:bg-teal-600";
+      case "bien":
+        return "bg-[#DEB887] hover:bg-[#C8A275]";
+      case "announcement":
+        return "bg-[#FF6B6B] hover:bg-[#FF5252]";
+      default:
+        return "bg-[#38AC8E] hover:bg-teal-600";
+    }
+  };
+
+  const submitBtnColor = getSubmitBtnColor();
 
   return (
     <div className="fixed inset-0 bg-black/10 backdrop-blur-sm flex items-center justify-center z-50 p-4">
@@ -467,7 +543,7 @@ const ServiceModal: React.FC<ServiceModalProps> = ({
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="md:col-span-2">
                 <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Titre *
+                  {type === "announcement" ? "Titre de l'annonce *" : "Titre *"}
                 </label>
                 {currentMode === "view" ? (
                   <div className="p-2.5 bg-gray-50 rounded-md border">
@@ -479,7 +555,11 @@ const ServiceModal: React.FC<ServiceModalProps> = ({
                     className="w-full border border-gray-300 rounded-md p-2.5 focus:ring-2 focus:ring-teal-500 focus:border-transparent outline-none transition-all"
                     value={title}
                     onChange={(e) => setTitle(e.target.value)}
-                    placeholder="Nom du service/bien"
+                    placeholder={
+                      type === "announcement"
+                        ? "Ex: Recherche développeur pour site web"
+                        : "Nom du service/bien"
+                    }
                   />
                 )}
               </div>
@@ -498,18 +578,24 @@ const ServiceModal: React.FC<ServiceModalProps> = ({
                     className="w-full border border-gray-300 rounded-md p-2.5 focus:ring-2 focus:ring-teal-500 focus:border-transparent outline-none transition-all resize-none"
                     value={description}
                     onChange={(e) => setDescription(e.target.value)}
-                    placeholder="Description détaillée"
+                    placeholder={
+                      type === "announcement"
+                        ? "Décrivez ce que vous recherchez en détail..."
+                        : "Description détaillée"
+                    }
                   />
                 )}
               </div>
 
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Montant d'energie *
+                  {type === "announcement"
+                    ? "Budget maximum *"
+                    : "Montant d'energie *"}
                 </label>
                 {currentMode === "view" ? (
                   <div className="p-2.5 bg-gray-50 rounded-md border flex items-center">
-                    {price}
+                    {type === "announcement" ? budget : price}
                     <img
                       src="/coin.png"
                       alt="e-nergie"
@@ -521,8 +607,12 @@ const ServiceModal: React.FC<ServiceModalProps> = ({
                     <input
                       type="number"
                       className="w-full border border-gray-300 rounded-md p-2.5 pr-12 focus:ring-2 focus:ring-teal-500 focus:border-transparent outline-none transition-all"
-                      value={price}
-                      onChange={(e) => setPrice(Number(e.target.value))}
+                      value={type === "announcement" ? budget : price}
+                      onChange={(e) =>
+                        type === "announcement"
+                          ? setBudget(Number(e.target.value))
+                          : setPrice(Number(e.target.value))
+                      }
                       placeholder="0"
                       min="0"
                     />
@@ -532,6 +622,7 @@ const ServiceModal: React.FC<ServiceModalProps> = ({
                   </div>
                 )}
               </div>
+
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
                   Catégorie *
@@ -557,6 +648,136 @@ const ServiceModal: React.FC<ServiceModalProps> = ({
                 )}
               </div>
             </div>
+
+            {/* Announcement-specific fields */}
+            {type === "announcement" && (
+              <div className="space-y-4 border-t pt-4">
+                <h3 className="text-lg font-medium text-gray-800 flex items-center gap-2">
+                  <IoAlertCircleOutline className="text-red-500" />
+                  Informations spécifiques à l'annonce
+                </h3>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <label className="text-sm font-medium text-gray-700 mb-1 flex items-center gap-1">
+                      <IoCalendarOutline />
+                      Échéance souhaitée
+                    </label>
+                    {currentMode === "view" ? (
+                      <div className="p-2.5 bg-gray-50 rounded-md border">
+                        {deadline
+                          ? new Date(deadline).toLocaleDateString("fr-FR")
+                          : "Non définie"}
+                      </div>
+                    ) : (
+                      <input
+                        type="date"
+                        className="w-full border border-gray-300 rounded-md p-2.5 focus:ring-2 focus:ring-teal-500 focus:border-transparent outline-none transition-all"
+                        value={deadline}
+                        onChange={(e) => setDeadline(e.target.value)}
+                        min={new Date().toISOString().split("T")[0]}
+                      />
+                    )}
+                  </div>
+
+                  <div>
+                    <label className="text-sm font-medium text-gray-700 mb-1 flex items-center gap-1">
+                      <IoAlertCircleOutline />
+                      Priorité
+                    </label>
+                    {currentMode === "view" ? (
+                      <div className="p-2.5 bg-gray-50 rounded-md border">
+                        {urgencyOptions.find((opt) => opt.value === urgency)
+                          ?.label || "Non définie"}
+                      </div>
+                    ) : (
+                      <select
+                        className="w-full border border-gray-300 rounded-md p-2.5 focus:ring-2 focus:ring-teal-500 focus:border-transparent outline-none transition-all bg-white"
+                        value={urgency}
+                        onChange={(e) => setUrgency(e.target.value)}
+                      >
+                        {urgencyOptions.map((option) => (
+                          <option key={option.value} value={option.value}>
+                            {option.label}
+                          </option>
+                        ))}
+                      </select>
+                    )}
+                  </div>
+
+                  <div>
+                    <label className="text-sm font-medium text-gray-700 mb-1 flex items-center gap-1">
+                      <IoLocationOutline />
+                      Localisation préférée
+                    </label>
+                    {currentMode === "view" ? (
+                      <div className="p-2.5 bg-gray-50 rounded-md border">
+                        {location || "Non spécifiée"}
+                      </div>
+                    ) : (
+                      <input
+                        type="text"
+                        className="w-full border border-gray-300 rounded-md p-2.5 focus:ring-2 focus:ring-teal-500 focus:border-transparent outline-none transition-all"
+                        value={location}
+                        onChange={(e) => setLocation(e.target.value)}
+                        placeholder="Ex: Paris, Lyon, À distance..."
+                      />
+                    )}
+                  </div>
+
+                  <div className="flex items-center space-x-3">
+                    <label className="block text-sm font-medium text-gray-700">
+                      Budget négociable ?
+                    </label>
+                    {currentMode === "view" ? (
+                      <div className="p-2.5 bg-gray-50 rounded-md border">
+                        {isNegotiable ? "Oui" : "Non"}
+                      </div>
+                    ) : (
+                      <div className="flex space-x-4">
+                        <label className="flex items-center">
+                          <input
+                            type="radio"
+                            className="mr-2"
+                            checked={isNegotiable}
+                            onChange={() => setIsNegotiable(true)}
+                          />
+                          Oui
+                        </label>
+                        <label className="flex items-center">
+                          <input
+                            type="radio"
+                            className="mr-2"
+                            checked={!isNegotiable}
+                            onChange={() => setIsNegotiable(false)}
+                          />
+                          Non
+                        </label>
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Exigences particulières
+                  </label>
+                  {currentMode === "view" ? (
+                    <div className="p-2.5 bg-gray-50 rounded-md border min-h-[60px]">
+                      {requirements || "Aucune exigence particulière"}
+                    </div>
+                  ) : (
+                    <textarea
+                      rows={2}
+                      className="w-full border border-gray-300 rounded-md p-2.5 focus:ring-2 focus:ring-teal-500 focus:border-transparent outline-none transition-all resize-none"
+                      value={requirements}
+                      onChange={(e) => setRequirements(e.target.value)}
+                      placeholder="Ex: Expérience minimum 3 ans, connaissance React obligatoire..."
+                    />
+                  )}
+                </div>
+              </div>
+            )}
 
             {/* Status Display for View Mode */}
             {currentMode === "view" && serviceData && (
@@ -700,6 +921,8 @@ const ServiceModal: React.FC<ServiceModalProps> = ({
                       : "Création..."
                     : currentMode === "edit"
                     ? "Modifier"
+                    : type === "announcement"
+                    ? "Créer l'annonce"
                     : "Créer"}
                 </button>
               )}
@@ -716,9 +939,16 @@ const ServiceModal: React.FC<ServiceModalProps> = ({
               Confirmer la dépublication
             </h3>
             <p className="text-gray-600 mb-6">
-              Êtes-vous sûr de vouloir dépublier ce{" "}
-              {type === "service" ? "service" : "bien"} ? Il ne sera plus
-              visible par les autres utilisateurs.
+              Êtes-vous sûr de vouloir dépublier{" "}
+              {type === "service"
+                ? "ce service"
+                : type === "bien"
+                ? "ce bien"
+                : "cette annonce"}{" "}
+              ?{" "}
+              {type === "announcement"
+                ? "Elle ne sera plus visible par les autres utilisateurs."
+                : "Il ne sera plus visible par les autres utilisateurs."}
             </p>
             <div className="flex justify-end gap-3">
               <button
@@ -748,9 +978,16 @@ const ServiceModal: React.FC<ServiceModalProps> = ({
               Confirmer la publication
             </h3>
             <p className="text-gray-600 mb-6">
-              Êtes-vous sûr de vouloir publier ce{" "}
-              {type === "service" ? "service" : "bien"} ? Il sera visible par
-              tous les utilisateurs.
+              Êtes-vous sûr de vouloir publier{" "}
+              {type === "service"
+                ? "ce service"
+                : type === "bien"
+                ? "ce bien"
+                : "cette annonce"}{" "}
+              ?{" "}
+              {type === "announcement"
+                ? "Elle sera visible par tous les utilisateurs."
+                : "Il sera visible par tous les utilisateurs."}
             </p>
             <div className="flex justify-end gap-3">
               <button

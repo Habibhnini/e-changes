@@ -5,11 +5,18 @@ import Image from "next/image";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { FaStar } from "react-icons/fa";
-import { IoWarningOutline, IoHeartOutline } from "react-icons/io5";
+import {
+  IoWarningOutline,
+  IoHeartOutline,
+  IoCalendarOutline,
+  IoLocationOutline,
+  IoAlertCircleOutline,
+} from "react-icons/io5";
 import { PiShareFat } from "react-icons/pi";
 import { useAuth } from "../../../contexts/AuthContext";
 import apiClient from "../../../api/apiClient";
 import ImageGallery from "@/app/components/ImageGallery";
+
 interface ServiceImage {
   id: number;
   url: string;
@@ -22,16 +29,31 @@ interface ServiceDetail {
   title: string;
   description: string;
   price: number;
+  budget?: number; // For announcements
   type: string;
   status: string;
   createdAt: string;
-  images?: ServiceImage[]; // Add this line
-  primaryImageUrl?: string; // Add this line
+  images?: ServiceImage[];
+  primaryImageUrl?: string;
+  // Announcement-specific fields
+  deadline?: string;
+  location?: string;
+  urgency?: "low" | "medium" | "high" | "urgent";
+  requirements?: string;
+  isNegotiable?: boolean;
   category: {
     id: number;
     name: string;
   };
   vendor: {
+    id: number;
+    email: string;
+    firstName: string;
+    lastName: string;
+    profileImage: string;
+    rating: number;
+  };
+  requester?: {
     id: number;
     email: string;
     firstName: string;
@@ -46,6 +68,7 @@ interface ServiceDetail {
   } | null;
   isOwner?: boolean;
 }
+
 export default function ServiceDetailPage() {
   const params = useParams();
   const id = params?.id as string;
@@ -81,13 +104,12 @@ export default function ServiceDetailPage() {
       fetchServiceDetail();
     }
   }, [id]);
+
   const getFullImageUrl = (path: string): string => {
     if (!path) return "/placeholder.png"; // fallback
     if (path.startsWith("http")) return path;
     return `${process.env.NEXT_PUBLIC_API_URL}${path}`;
   };
-
-  // Enhanced handleInterestClick function with better error handling
 
   const handleInterestClick = async () => {
     if (!isAuthenticated) {
@@ -98,8 +120,14 @@ export default function ServiceDetailPage() {
     }
 
     if (service?.isOwner) {
+      const itemType =
+        service.type === "announcement"
+          ? "annonce"
+          : service.type === "bien"
+          ? "bien"
+          : "service";
       alert(
-        "Vous ne pouvez pas démarrer une transaction pour votre propre service."
+        `Vous ne pouvez pas démarrer une transaction pour votre propre ${itemType}.`
       );
       return;
     }
@@ -108,22 +136,19 @@ export default function ServiceDetailPage() {
     try {
       if (service?.transaction) {
         // If transaction already exists, redirect to the chat page with transaction ID
-
         router.push(`/chat?transaction=${service.transaction.id}`);
       } else {
         // Create a new transaction
-
-        const token = localStorage.getItem("token"); // Or however you store your JWT token
+        const token = localStorage.getItem("token");
 
         const response = await fetch(`/api/messages/new/${id}`, {
           method: "GET",
           headers: {
             "Content-Type": "application/json",
-            Authorization: `Bearer ${token}`, // Add this line to include the JWT token
+            Authorization: `Bearer ${token}`,
           },
         });
 
-        // Get the response text for debugging
         const responseText = await response.text();
 
         if (!response.ok) {
@@ -132,7 +157,6 @@ export default function ServiceDetailPage() {
           );
         }
 
-        // Parse the JSON if it's valid
         let data;
         try {
           data = JSON.parse(responseText);
@@ -141,22 +165,20 @@ export default function ServiceDetailPage() {
         }
 
         if (data.redirect && data.transactionId) {
-          // If there's an existing transaction, redirect to it
           router.push(`/chat?transaction=${data.transactionId}`);
         } else if (data.transaction && data.transaction.id) {
-          // If a new transaction was created, redirect to chat with new transaction
           router.push(`/chat?transaction=${data.transaction.id}`);
         } else {
           throw new Error(`Invalid response format: ${JSON.stringify(data)}`);
         }
       }
     } catch (err) {
-      //  console.error("Error starting transaction:", err);
       setError(`Failed to start transaction: ${err}`);
     } finally {
       setLoading(false);
     }
   };
+
   // Generate stars based on rating
   const renderStars = (rating: number) => {
     const stars = [];
@@ -171,6 +193,99 @@ export default function ServiceDetailPage() {
       );
     }
     return stars;
+  };
+
+  // Get the appropriate user object based on service type
+  const getServiceUser = () => {
+    if (service?.type === "announcement") {
+      return service.requester || service.vendor; // Fallback to vendor if requester not available
+    }
+    return service?.vendor;
+  };
+
+  // Get display text based on service type
+  const getServiceTypeText = () => {
+    switch (service?.type) {
+      case "announcement":
+        return "Demande";
+      case "bien":
+        return "Bien";
+      case "service":
+        return "Service";
+      default:
+        return service?.type || "Service";
+    }
+  };
+
+  // Get price display based on service type
+  const getPriceDisplay = () => {
+    if (service?.type === "announcement") {
+      return service.budget || service.price || 0;
+    }
+    return service?.price || 0;
+  };
+
+  // Get price label based on service type
+  const getPriceLabel = () => {
+    return service?.type === "announcement" ? "Budget maximum" : "Prix";
+  };
+
+  // Get button text based on service type
+  const getButtonText = () => {
+    if (service?.type === "announcement") {
+      return service.transaction
+        ? "Continuer la conversation"
+        : "Répondre à la demande";
+    }
+    return service?.transaction
+      ? "Continuer la conversation"
+      : "Je suis intéressé";
+  };
+
+  // Get urgency badge color
+  const getUrgencyColor = (urgency: string) => {
+    switch (urgency) {
+      case "urgent":
+        return "bg-red-100 text-red-800";
+      case "high":
+        return "bg-orange-100 text-orange-800";
+      case "medium":
+        return "bg-yellow-100 text-yellow-800";
+      case "low":
+        return "bg-green-100 text-green-800";
+      default:
+        return "bg-gray-100 text-gray-800";
+    }
+  };
+
+  // Get urgency label
+  const getUrgencyLabel = (urgency: string) => {
+    switch (urgency) {
+      case "urgent":
+        return "Urgent";
+      case "high":
+        return "Priorité haute";
+      case "medium":
+        return "Priorité moyenne";
+      case "low":
+        return "Priorité basse";
+      default:
+        return urgency;
+    }
+  };
+
+  // Get type badge color and styling
+  const getTypeBadge = () => {
+    switch (service?.type) {
+      case "announcement":
+        return "bg-blue-100 text-blue-800 border border-blue-200";
+      case "bien":
+        return "bg-purple-100 text-purple-800 border border-purple-200";
+      case "service":
+        return "bg-green-100 text-green-800 border border-green-200";
+      default:
+        return "bg-gray-100 text-gray-800 border border-gray-200";
+    }
   };
 
   // Show loading state
@@ -198,7 +313,7 @@ export default function ServiceDetailPage() {
     );
   }
 
-  // Format date to relative time (e.g., "il y a 15 heures")
+  // Format date to relative time
   const formatRelativeTime = (dateString: string) => {
     const date = new Date(dateString);
     const now = new Date();
@@ -228,6 +343,8 @@ export default function ServiceDetailPage() {
     return statusMap[status] || status;
   };
 
+  const serviceUser = getServiceUser();
+
   return (
     <div className="max-w-full mx-auto px-4 sm:px-6 lg:px-8 py-4">
       {/* Breadcrumb navigation */}
@@ -243,7 +360,11 @@ export default function ServiceDetailPage() {
           href="/explorer"
           className="hover:text-gray-900 transition-colors duration-200 ease-in-out cursor-pointer"
         >
-          Services
+          {service.type === "announcement"
+            ? "Annonces"
+            : service.type === "bien"
+            ? "Biens"
+            : "Services"}
         </Link>
         <span className="mx-2">{">"}</span>
         <Link
@@ -258,15 +379,21 @@ export default function ServiceDetailPage() {
 
       {/* Desktop Layout */}
       <div className="hidden md:block">
-        {/* Action buttons at the top right */}
-
         {/* Main content area */}
         <div className="flex flex-col flex-1">
+          {/* Type indicator banner */}
+          <div className="mb-4">
+            <span
+              className={`px-3 py-1 rounded-full text-sm font-medium ${getTypeBadge()}`}
+            >
+              {getServiceTypeText()}
+            </span>
+          </div>
+
           {/* Main content grid */}
           <div className="flex flex-row gap-6">
             {/* Main image with thumbnails on the left */}
             <div className="w-1/3 flex">
-              {/* Thumbnails next to the image */}
               <ImageGallery
                 images={service.images || []}
                 title={service.title}
@@ -277,10 +404,21 @@ export default function ServiceDetailPage() {
             {/* Service summary */}
             <div className="w-2/3">
               <div className="mb-4">
-                <h1 className="text-2xl font-medium">{service.title}</h1>
+                <div className="flex items-center gap-2 mb-2">
+                  <h1 className="text-2xl font-medium">{service.title}</h1>
+                  {service.type === "announcement" && service.urgency && (
+                    <span
+                      className={`px-2 py-1 rounded-full text-xs font-medium ${getUrgencyColor(
+                        service.urgency
+                      )}`}
+                    >
+                      {getUrgencyLabel(service.urgency)}
+                    </span>
+                  )}
+                </div>
                 <div className="flex items-center">
                   <h2 className="text-xl font-medium text-yellow-500">
-                    {service.price}{" "}
+                    {getPriceDisplay()}{" "}
                   </h2>
                   <Image
                     src="/coin.png"
@@ -289,6 +427,11 @@ export default function ServiceDetailPage() {
                     height={40}
                     className="object-cover ml-2 w-6 h-5"
                   />
+                  {service.type === "announcement" && service.isNegotiable && (
+                    <span className="ml-2 text-sm text-gray-600">
+                      (négociable)
+                    </span>
+                  )}
                 </div>
                 <p className="text-gray-500 text-sm">
                   Posté {formatRelativeTime(service.createdAt)}
@@ -300,14 +443,88 @@ export default function ServiceDetailPage() {
                 <dl className="text-sm">
                   <div className="flex mb-1">
                     <dt className="text-gray-600 w-1/5">Type</dt>
-                    <dd className="w-4/5">{service.type}</dd>
+                    <dd className="w-4/5">{getServiceTypeText()}</dd>
                   </div>
                   <div className="flex mb-1">
-                    <dt className="text-gray-600 w-1/5">Categorie</dt>
-                    <dd className="w-4/5">{service.category.name} </dd>
+                    <dt className="text-gray-600 w-1/5">Catégorie</dt>
+                    <dd className="w-4/5">{service.category.name}</dd>
                   </div>
+                  <div className="flex mb-1">
+                    <dt className="text-gray-600 w-1/5">{getPriceLabel()}</dt>
+                    <dd className="w-4/5 flex items-center">
+                      {getPriceDisplay()}
+                      <Image
+                        src="/coin.png"
+                        alt="Energy coins"
+                        width={20}
+                        height={16}
+                        className="ml-1"
+                      />
+                      {service.type === "announcement" &&
+                        service.isNegotiable && (
+                          <span className="ml-2 text-gray-600">
+                            (négociable)
+                          </span>
+                        )}
+                    </dd>
+                  </div>
+                  <div className="flex mb-1">
+                    <dt className="text-gray-600 w-1/5">Statut</dt>
+                    <dd className="w-4/5 capitalize">{service.status}</dd>
+                  </div>
+                  {service.type === "announcement" && (
+                    <>
+                      {service.location && (
+                        <div className="flex mb-1">
+                          <dt className="text-gray-600 w-1/5">Localisation</dt>
+                          <dd className="w-4/5 flex items-center">
+                            <IoLocationOutline className="mr-1" />
+                            {service.location}
+                          </dd>
+                        </div>
+                      )}
+                      {service.deadline && (
+                        <div className="flex mb-1">
+                          <dt className="text-gray-600 w-1/5">Échéance</dt>
+                          <dd className="w-4/5 flex items-center">
+                            <IoCalendarOutline className="mr-1" />
+                            {new Date(service.deadline).toLocaleDateString(
+                              "fr-FR"
+                            )}
+                          </dd>
+                        </div>
+                      )}
+                      {service.urgency && (
+                        <div className="flex mb-1">
+                          <dt className="text-gray-600 w-1/5">Urgence</dt>
+                          <dd className="w-4/5">
+                            <span
+                              className={`px-2 py-1 rounded-full text-xs font-medium ${getUrgencyColor(
+                                service.urgency
+                              )}`}
+                            >
+                              {getUrgencyLabel(service.urgency)}
+                            </span>
+                          </dd>
+                        </div>
+                      )}
+                    </>
+                  )}
                 </dl>
               </div>
+
+              {/* Show announcement requirements if exists */}
+              {service.type === "announcement" && service.requirements && (
+                <div className="mb-4 p-3 bg-blue-50 rounded-lg border border-blue-200">
+                  <h3 className="font-medium mb-2 flex items-center">
+                    <IoAlertCircleOutline className="mr-2 text-blue-600" />
+                    Exigences particulières
+                  </h3>
+                  <p className="text-sm text-gray-700">
+                    {service.requirements}
+                  </p>
+                </div>
+              )}
 
               {/* Show transaction info if exists */}
               {service.transaction && (
@@ -345,7 +562,7 @@ export default function ServiceDetailPage() {
                 <div className="flex items-center cursor-pointer hover:opacity-90 transition-opacity duration-200">
                   <div className="w-10 h-10 rounded-full overflow-hidden bg-gray-300 mr-3">
                     <Image
-                      src={getFullImageUrl(service.vendor.profileImage)}
+                      src={getFullImageUrl(serviceUser?.profileImage || "")}
                       alt="User profile"
                       width={40}
                       height={40}
@@ -355,20 +572,20 @@ export default function ServiceDetailPage() {
                   <div>
                     <div className="flex items-center">
                       <div className="font-medium mr-2">
-                        {service.vendor.firstName} {service.vendor.lastName}
+                        {serviceUser?.firstName} {serviceUser?.lastName}
                       </div>
                     </div>
                     <span className="text-xs text-gray-600">
-                      {service.vendor.email}
+                      {serviceUser?.email}
                     </span>
                   </div>
                 </div>
 
-                {/* Action buttons - moved to same line as user name */}
+                {/* Action buttons - Keep same styling for all types */}
                 <div className="flex space-x-3">
-                  {user?.id !== service.vendor.id && (
+                  {user?.id !== serviceUser?.id && (
                     <div className="flex space-x-3">
-                      <Link href={`/profile/${service.vendor.id}`}>
+                      <Link href={`/profile/${serviceUser?.id}`}>
                         <button className="border border-[#38AC8E] text-[#38AC8E] py-2 px-4 rounded-full font-medium text-sm cursor-pointer hover:bg-[#38AC8E] hover:text-white transition-all duration-300 ease-in-out transform hover:scale-105 active:scale-95">
                           Voir le profil
                         </button>
@@ -376,11 +593,9 @@ export default function ServiceDetailPage() {
 
                       <button
                         onClick={handleInterestClick}
-                        className="bg-[#38AC8E] text-white py-2 px-4 rounded-full font-medium text-sm cursor-pointer hover:bg-[#2D8A70] transition-colors duration-300 ease-in-out transform hover:scale-105 active:scale-95"
+                        className="bg-[#38AC8E] text-white py-2 px-4 rounded-full font-medium text-sm cursor-pointer hover:bg-[#2D8A70] transition-all duration-300 ease-in-out transform hover:scale-105 active:scale-95"
                       >
-                        {service.transaction
-                          ? "Continuer la conversation"
-                          : "Je suis intéressé"}
+                        {getButtonText()}
                       </button>
                     </div>
                   )}
@@ -391,7 +606,13 @@ export default function ServiceDetailPage() {
 
           {/* Service details section */}
           <div className="mt-8 pt-6 border-t border-gray-200">
-            <h3 className="font-medium text-lg mb-3">Détails</h3>
+            <h3 className="font-medium text-lg mb-3">
+              {service.type === "announcement"
+                ? "Description de la demande"
+                : service.type === "bien"
+                ? "Description du bien"
+                : "Détails du service"}
+            </h3>
             <p className="text-gray-700">{service.description}</p>
           </div>
         </div>
@@ -399,7 +620,14 @@ export default function ServiceDetailPage() {
 
       {/* Mobile Layout */}
       <div className="block md:hidden">
-        {/* Mobile action buttons */}
+        {/* Type indicator banner */}
+        <div className="mb-4">
+          <span
+            className={`px-3 py-1 rounded-full text-sm font-medium ${getTypeBadge()}`}
+          >
+            {getServiceTypeText()}
+          </span>
+        </div>
 
         {/* Main image */}
         <div className="mb-4">
@@ -410,14 +638,23 @@ export default function ServiceDetailPage() {
           />
         </div>
 
-        {/* Thumbnails below the image */}
-
-        {/* Title and category - moved right above resume */}
+        {/* Title and category */}
         <div className="mb-4">
-          <h1 className="text-xl font-medium">{service.title}</h1>
+          <div className="flex items-center gap-2 mb-2">
+            <h1 className="text-xl font-medium">{service.title}</h1>
+            {service.type === "announcement" && service.urgency && (
+              <span
+                className={`px-2 py-1 rounded-full text-xs font-medium ${getUrgencyColor(
+                  service.urgency
+                )}`}
+              >
+                {getUrgencyLabel(service.urgency)}
+              </span>
+            )}
+          </div>
           <div className="flex items-center">
             <h2 className="text-lg font-medium text-yellow-500">
-              {service.price}
+              {getPriceDisplay()}
             </h2>
             <Image
               src="/coin.png"
@@ -426,11 +663,25 @@ export default function ServiceDetailPage() {
               height={20}
               className="ml-1"
             />
+            {service.type === "announcement" && service.isNegotiable && (
+              <span className="ml-2 text-sm text-gray-600">(négociable)</span>
+            )}
           </div>
           <p className="text-gray-500 text-sm">
             Posté {formatRelativeTime(service.createdAt)}
           </p>
         </div>
+
+        {/* Show announcement requirements if exists */}
+        {service.type === "announcement" && service.requirements && (
+          <div className="mb-4 p-3 bg-blue-50 rounded-lg border border-blue-200">
+            <h3 className="font-medium mb-2 flex items-center">
+              <IoAlertCircleOutline className="mr-2 text-blue-600" />
+              Exigences particulières
+            </h3>
+            <p className="text-sm text-gray-700">{service.requirements}</p>
+          </div>
+        )}
 
         {/* Show transaction info if exists */}
         {service.transaction && (
@@ -463,16 +714,66 @@ export default function ServiceDetailPage() {
           </div>
         )}
 
-        {/* Mobile resume section */}
+        {/* Mobile resume section - Expanded for announcements */}
         <div className="mb-6">
           <h3 className="font-medium mb-2">Résumé</h3>
           <div className="grid grid-cols-2 gap-y-2 text-sm">
             <div className="text-gray-600">Type</div>
-            <div>{service.type}</div>
-            <div className="text-gray-600">Category</div>
-            <div>{service.category.name} </div>
+            <div>{getServiceTypeText()}</div>
+            <div className="text-gray-600">Catégorie</div>
+            <div>{service.category.name}</div>
+            <div className="text-gray-600">{getPriceLabel()}</div>
+            <div className="flex items-center">
+              {getPriceDisplay()}
+              <Image
+                src="/coin.png"
+                alt="Energy coins"
+                width={16}
+                height={14}
+                className="ml-1"
+              />
+              {service.type === "announcement" && service.isNegotiable && (
+                <span className="ml-1 text-xs text-gray-600">(négociable)</span>
+              )}
+            </div>
             <div className="text-gray-600">Statut</div>
-            <div>{service.status}</div>
+            <div className="capitalize">{service.status}</div>
+            {service.type === "announcement" && (
+              <>
+                {service.location && (
+                  <>
+                    <div className="text-gray-600">Localisation</div>
+                    <div className="flex items-center">
+                      <IoLocationOutline className="mr-1" />
+                      {service.location}
+                    </div>
+                  </>
+                )}
+                {service.deadline && (
+                  <>
+                    <div className="text-gray-600">Échéance</div>
+                    <div className="flex items-center">
+                      <IoCalendarOutline className="mr-1" />
+                      {new Date(service.deadline).toLocaleDateString("fr-FR")}
+                    </div>
+                  </>
+                )}
+                {service.urgency && (
+                  <>
+                    <div className="text-gray-600">Urgence</div>
+                    <div>
+                      <span
+                        className={`px-2 py-1 rounded-full text-xs font-medium ${getUrgencyColor(
+                          service.urgency
+                        )}`}
+                      >
+                        {getUrgencyLabel(service.urgency)}
+                      </span>
+                    </div>
+                  </>
+                )}
+              </>
+            )}
           </div>
         </div>
 
@@ -482,7 +783,7 @@ export default function ServiceDetailPage() {
             <div className="flex items-center mb-3 cursor-pointer hover:opacity-90 transition-opacity duration-200">
               <div className="w-8 h-8 rounded-full overflow-hidden bg-gray-300 mr-3">
                 <Image
-                  src={getFullImageUrl(service.vendor.profileImage)}
+                  src={getFullImageUrl(serviceUser?.profileImage || "")}
                   alt="User profile"
                   width={40}
                   height={40}
@@ -492,22 +793,22 @@ export default function ServiceDetailPage() {
               <div>
                 <div className="flex items-center">
                   <div className="font-medium mr-2">
-                    {service.vendor.firstName} {service.vendor.lastName}{" "}
+                    {serviceUser?.firstName} {serviceUser?.lastName}
                   </div>
                   <div className="flex">
-                    {renderStars(service.vendor.rating)}
+                    {renderStars(serviceUser?.rating || 0)}
                   </div>
                 </div>
                 <span className="text-xs text-gray-600">
-                  {service.vendor.email}
+                  {serviceUser?.email}
                 </span>
               </div>
             </div>
 
-            {/* Mobile action buttons - now below user info with bigger size */}
+            {/* Mobile action buttons - Keep same styling for all types */}
             <div className="flex space-x-3 w-full">
-              <Link href={`/profile/${service.vendor.id}`} className="flex-1">
-                <button className="border border-teal-500 text-teal-500 py-2 px-4 rounded-full text-sm w-full cursor-pointer hover:bg-teal-500 hover:text-white transition-all duration-300 ease-in-out transform hover:scale-105 active:scale-95">
+              <Link href={`/profile/${serviceUser?.id}`} className="flex-1">
+                <button className="border border-[#38AC8E] text-[#38AC8E] py-2 px-4 rounded-full text-sm w-full cursor-pointer hover:bg-[#38AC8E] hover:text-white transition-all duration-300 ease-in-out transform hover:scale-105 active:scale-95">
                   Voir profil
                 </button>
               </Link>
@@ -515,9 +816,13 @@ export default function ServiceDetailPage() {
               {!service.isOwner && (
                 <button
                   onClick={handleInterestClick}
-                  className="bg-[#38AC8E] text-white py-2 px-4 rounded-full text-sm flex-1 w-full cursor-pointer hover:bg-[#2D8A70] transition-colors duration-300 ease-in-out transform hover:scale-105 active:scale-95"
+                  className="bg-[#38AC8E] text-white py-2 px-4 rounded-full text-sm flex-1 w-full cursor-pointer hover:bg-[#2D8A70] transition-all duration-300 ease-in-out transform hover:scale-105 active:scale-95"
                 >
-                  {service.transaction ? "Continuer" : "Intéressé"}
+                  {service.transaction
+                    ? "Continuer"
+                    : service.type === "announcement"
+                    ? "Répondre"
+                    : "Intéressé"}
                 </button>
               )}
             </div>
@@ -526,7 +831,13 @@ export default function ServiceDetailPage() {
 
         {/* Mobile details section */}
         <div className="border-t border-gray-200 pt-4">
-          <h3 className="font-medium mb-3">Détails</h3>
+          <h3 className="font-medium mb-3">
+            {service.type === "announcement"
+              ? "Description de la demande"
+              : service.type === "bien"
+              ? "Description du bien"
+              : "Détails du service"}
+          </h3>
           <p className="text-gray-700 text-sm">{service.description}</p>
         </div>
       </div>
